@@ -1,0 +1,9 @@
+{
+  "name": "Doom Personal AI",
+  "short_name": "Doom",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#06100a",
+  "theme_color": "#164d2b",
+  "lang": "pt-BR"
+}

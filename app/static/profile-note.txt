@@ -1,0 +1,2 @@
+Este arquivo representa o perfil contextual inicial que Doom pode usar sobre Renan.
+Edite app/user_profile.py quando quiser corrigir ou ampliar informações duráveis.
