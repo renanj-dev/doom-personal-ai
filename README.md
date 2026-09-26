@@ -15,3 +15,7 @@ Copy `.env.example` to `.env`, set `LLM_PROVIDER=ollama`, use `DOOM_MODEL=qwen3:
 ## Cloud prototype
 
 See `README_CLOUD.md` and `render.yaml` for the Render + Neon + OpenRouter deployment path.
+
+## Visual Codex Forest Core
+
+A interface usa o sistema semântico de estados documentado em `DOOM_CODEX.md`.
