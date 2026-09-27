@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.1.0 — Memory Engine
+
+- Added persistent conversation history grouped by session.
+- Added conversation list, resume, search, archive and delete APIs.
+- Added automatic conversation titles and message counts.
+- Added history drawer to the Doom web UI.
+- Kept persistent memory and user profile separate from raw chat history.
+- Kept provider secrets server-side.
+
+
 ## v1.0.0 — Doom Cortex
 
 - Added Doom Cortex task classification and provider routing.

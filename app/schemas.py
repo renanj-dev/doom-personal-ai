@@ -28,3 +28,34 @@ class MemoryOut(BaseModel):
     content: str
     active: bool
     created_at: datetime
+
+
+class ConversationCreate(BaseModel):
+    title: str = Field(default="Nova conversa", min_length=1, max_length=160)
+
+
+class ConversationUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    archived: bool | None = None
+
+
+class ConversationOut(BaseModel):
+    session_id: str
+    title: str
+    archived: bool
+    created_at: datetime
+    updated_at: datetime
+    message_count: int = 0
+
+
+class HistoryMessageOut(BaseModel):
+    id: int
+    session_id: str
+    role: str
+    content: str
+    created_at: datetime
+
+
+class ConversationDetailOut(BaseModel):
+    conversation: ConversationOut
+    messages: list[HistoryMessageOut]

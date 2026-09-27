@@ -1,4 +1,4 @@
-# Doom Personal AI v0.7
+# Doom Personal AI v1.1
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -24,3 +24,10 @@ A interface usa o sistema semântico de estados documentado em `DOOM_CODEX.md`.
 ## Doom Cortex v1.0
 
 Doom now uses a routing layer that selects among configured AI providers and can fall back when a provider fails. See `DOOM_CORTEX.md`.
+
+
+## Memory Engine v1.1
+
+Doom now separates conversation history from persistent memory and current context. Conversations can be created, resumed, searched, archived, and deleted through the Memory Engine.
+
+See `DOOM_MEMORY_ENGINE.md` for the data model and API.

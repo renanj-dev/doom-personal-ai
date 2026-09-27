@@ -26,7 +26,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def init_db() -> None:
-    from .models import Memory, Message  # noqa: F401
+    from .models import Conversation, Memory, Message  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
 
