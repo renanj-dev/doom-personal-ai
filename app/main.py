@@ -16,7 +16,7 @@ from .llm import ask_doom, build_user_profile, is_profile_query
 from scripts.seed_memories import seed_memories
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="0.6.0")
+app = FastAPI(title="Doom Personal AI", version="0.8.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -85,6 +85,23 @@ def clear_session(session_id: str, db: Session = Depends(get_db)):
     return {"ok": True, "session_id": session_id}
 
 
+
+def infer_mode(message: str) -> str:
+    t = (message or "").strip().lower()
+    if any(k in t for k in ("quem sou eu", "o que você sabe sobre mim", "o que sabe sobre mim", "memória", "lembra", "lembrar", "esquecer")):
+        return "memory"
+    if any(k in t for k in ("estud", "aprender", "exercício", "matemática", "enem", "aula")):
+        return "study"
+    if any(k in t for k in ("analise", "análise", "possibilidade", "possibilidades", "compare", "cenário", "hipótese")):
+        return "analysis"
+    if any(k in t for k in ("crie", "criar", "escreva", "desenhe", "ideia", "projeto")):
+        return "creation"
+    if any(k in t for k in ("execute", "executar", "abra", "rodar", "rode", "faça isso")):
+        return "execution"
+    if any(k in t for k in ("talvez", "especul", "e se", "hipotetic")):
+        return "speculation"
+    return "thinking"
+
 @app.post("/api/chat", response_model=ChatResponse, dependencies=[Depends(auth)])
 def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     db.add(Message(session_id=payload.session_id, role="user", content=payload.message))
@@ -106,11 +123,13 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     ).all()
     memory_text = "\n".join(f"[{m.category}] {m.content}" for m in memories)
 
+    mode = infer_mode(payload.message)
     try:
         recent_payload = [{"role": m.role, "content": m.content} for m in recent]
         if is_profile_query(payload.message):
             profile_rows = [(m.category, m.content) for m in memories]
             reply = build_user_profile(profile_rows, settings.doom_user_name)
+            mode = "memory"
         else:
             # A short affirmative follow-up can mean "continue the profile".
             recent_user_texts = [m.content.strip().lower() for m in recent if m.role == "user"]
@@ -119,6 +138,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
             if payload.message.strip().lower() in followups and prior_profile:
                 profile_rows = [(m.category, m.content) for m in memories]
                 reply = build_user_profile(profile_rows, settings.doom_user_name)
+                mode = "memory"
             else:
                 reply = ask_doom(
                     memory_text=memory_text,
@@ -132,4 +152,4 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
 
     db.add(Message(session_id=payload.session_id, role="assistant", content=reply))
     db.commit()
-    return ChatResponse(session_id=payload.session_id, reply=reply)
+    return ChatResponse(session_id=payload.session_id, reply=reply, mode="success" if mode == "thinking" else mode)

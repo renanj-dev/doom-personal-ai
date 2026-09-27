@@ -1,0 +1,62 @@
+{
+  "name": "Doom Visual Codex",
+  "version": "1.0",
+  "theme": "Forest Core",
+  "base": {
+    "deep": "#0D3B1F",
+    "main": "#1A5C2E",
+    "active": "#2D8A3E",
+    "dark_background": "#0A110D",
+    "light_background": "#F4F7F2"
+  },
+  "states": {
+    "error": {
+      "dark": "#FF9A90",
+      "light": "#8E2C32"
+    },
+    "success": {
+      "dark": "#91D5A0",
+      "light": "#206B39"
+    },
+    "warning": {
+      "dark": "#F1C46B",
+      "light": "#805700"
+    },
+    "info": {
+      "dark": "#8CBFD4",
+      "light": "#24576B"
+    },
+    "analysis": {
+      "dark": "#B9A9EE",
+      "light": "#58458A"
+    },
+    "creation": {
+      "dark": "#DFA8D2",
+      "light": "#783E72"
+    },
+    "execution": {
+      "dark": "#9FD2B1",
+      "light": "#2D6547"
+    },
+    "memory": {
+      "dark": "#A5B8E7",
+      "light": "#405B8F"
+    },
+    "study": {
+      "dark": "#E9ECE8",
+      "light": "#35423A"
+    },
+    "offline": {
+      "dark": "#C9AE86",
+      "light": "#6D512E"
+    },
+    "online": {
+      "dark": "#8DD5B3",
+      "light": "#1F6A49"
+    },
+    "speculation": {
+      "dark": "#C5ACEA",
+      "light": "#65478C"
+    }
+  }
+}

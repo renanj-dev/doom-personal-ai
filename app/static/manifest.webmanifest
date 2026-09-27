@@ -3,7 +3,7 @@
   "short_name": "Doom",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#06100a",
-  "theme_color": "#164d2b",
+  "background_color": "#0A110D",
+  "theme_color": "#1A5C2E",
   "lang": "pt-BR"
 }

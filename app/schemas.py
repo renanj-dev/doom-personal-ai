@@ -10,6 +10,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     session_id: str
     reply: str
+    mode: str = "success"
 
 
 class MemoryCreate(BaseModel):
