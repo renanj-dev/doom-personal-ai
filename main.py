@@ -16,7 +16,7 @@ from .llm import ask_doom, build_user_profile, is_profile_query
 from scripts.seed_memories import seed_memories
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="0.8.0")
+app = FastAPI(title="Doom Personal AI", version="0.9.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
