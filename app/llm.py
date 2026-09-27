@@ -77,7 +77,7 @@ def _ask_openai(memory_text: str, recent_messages: list[dict]) -> str:
 
     client = OpenAI(api_key=settings.openai_api_key)
     response = client.responses.create(
-        model=settings.doom_model,
+        model=settings.openai_model,
         instructions=_messages(memory_text, [])[0]["content"],
         input=[{"role": m["role"], "content": m["content"]} for m in recent_messages],
         store=False,
@@ -101,7 +101,7 @@ def _ask_openrouter(memory_text: str, recent_messages: list[dict]) -> str:
         default_headers=default_headers or None,
     )
     response = client.chat.completions.create(
-        model=settings.doom_model,
+        model=settings.openrouter_model,
         messages=_messages(memory_text, recent_messages),
     )
     return _clean_content(response.choices[0].message.content or "")
@@ -109,7 +109,7 @@ def _ask_openrouter(memory_text: str, recent_messages: list[dict]) -> str:
 
 def _ask_ollama(memory_text: str, recent_messages: list[dict]) -> str:
     payload = {
-        "model": settings.doom_model,
+        "model": settings.ollama_model,
         "messages": _messages(memory_text, recent_messages),
         "stream": False,
         "think": False,
@@ -124,13 +124,14 @@ def _ask_ollama(memory_text: str, recent_messages: list[dict]) -> str:
     return _clean_content(data.get("message", {}).get("content", ""))
 
 
-def ask_doom(memory_text: str, recent_messages: list[dict]) -> str:
-    if settings.provider == "ollama":
+def ask_doom(memory_text: str, recent_messages: list[dict], provider: str | None = None) -> str:
+    selected = (provider or settings.provider).strip().lower()
+    if selected == "ollama":
         return _ask_ollama(memory_text, recent_messages)
-    if settings.provider == "openai":
+    if selected == "openai":
         return _ask_openai(memory_text, recent_messages)
-    if settings.provider == "openrouter":
+    if selected == "openrouter":
         return _ask_openrouter(memory_text, recent_messages)
     raise RuntimeError(
-        f"LLM_PROVIDER desconhecido: {settings.provider}. Use 'ollama', 'openai' ou 'openrouter'."
+        f"Provedor desconhecido: {selected}. Use 'ollama', 'openai' ou 'openrouter'."
     )

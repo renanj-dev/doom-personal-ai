@@ -1,67 +1,38 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1A5C2E"><link rel="manifest" href="/static/manifest.webmanifest"><title>Doom</title><style>
-:root {
-  color-scheme: dark;
-  --doom-bg: #0A110D;
-  --doom-bg-2: #06100A;
-  --doom-panel: rgba(11, 23, 16, 0.92);
-  --doom-line: #193324;
-  --doom-forest-deep: #0D3B1F;
-  --doom-forest-main: #1A5C2E;
-  --doom-forest-active: #2D8A3E;
-  --doom-text: #EDF5EF;
-  --doom-muted: #91A89A;
-  --doom-state: #8DD5B3;
-  --doom-state-soft: rgba(141,213,179,.16);
-  --doom-state-glow: rgba(141,213,179,.38);
-  --doom-rune: #B7D5BF;
-  --doom-rune-active: #0A110D;
-}
-:root[data-theme="light"] {
-  color-scheme: light;
-  --doom-bg: #F4F7F2;
-  --doom-bg-2: #EAF0E9;
-  --doom-panel: rgba(255,255,255,.96);
-  --doom-line: #B7C8BA;
-  --doom-text: #152219;
-  --doom-muted: #516458;
-  --doom-rune: #2B5136;
-  --doom-rune-active: #F4F7F2;
-}
-*{box-sizing:border-box}html,body{min-height:100%}
-body{margin:0;font-family:Inter,Segoe UI,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;background:radial-gradient(circle at 50% -10%,color-mix(in srgb,var(--doom-state) 22%,transparent),transparent 34%),radial-gradient(circle at 0% 100%,color-mix(in srgb,var(--doom-forest-deep) 34%,transparent),transparent 35%),var(--doom-bg);color:var(--doom-text);min-height:100vh;transition:background .25s ease,color .25s ease}
-button,input{font:inherit}button{cursor:pointer}
-.doom-shell{max-width:1120px;margin:0 auto;padding:18px 14px 28px}
-.doom-topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
-.doom-brand{display:flex;align-items:center;gap:12px;min-width:0}
-.doom-orb{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;border:1px solid color-mix(in srgb,var(--doom-state) 70%,var(--doom-line));background:radial-gradient(circle,color-mix(in srgb,var(--doom-state) 88%,white 4%) 0,var(--doom-forest-deep) 42%,var(--doom-bg-2) 72%);box-shadow:0 0 32px var(--doom-state-glow);transition:all .25s ease;font-weight:700}
-.doom-brand h1{margin:0;font-size:22px;letter-spacing:.18em}.doom-sub{margin-top:4px;color:var(--doom-muted);font-size:12px;letter-spacing:.05em}
-.doom-actions{display:flex;align-items:center;gap:8px}.doom-icon-btn{width:38px;height:38px;border-radius:11px;border:1px solid var(--doom-line);color:var(--doom-text);background:color-mix(in srgb,var(--doom-panel) 82%,transparent);display:grid;place-items:center;text-decoration:none}.doom-icon-btn:hover{border-color:var(--doom-state);box-shadow:0 0 16px var(--doom-state-soft)}
-.doom-statebar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.doom-state{display:inline-flex;align-items:center;gap:8px;border:1px solid color-mix(in srgb,var(--doom-state) 58%,var(--doom-line));background:var(--doom-state-soft);padding:7px 10px;border-radius:999px;font-size:12px}.doom-dot{width:8px;height:8px;border-radius:50%;background:var(--doom-state);box-shadow:0 0 10px var(--doom-state-glow)}
-.doom-runes{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}.doom-rune{width:28px;height:28px;display:grid;place-items:center;color:var(--doom-rune);border:1px solid var(--doom-line);background:color-mix(in srgb,var(--doom-panel) 82%,transparent);clip-path:polygon(50% 0,95% 25%,78% 88%,50% 100%,22% 88%,5% 25%);font-size:12px}.doom-rune.active{color:var(--doom-rune-active);border-color:var(--doom-state);background:var(--doom-state);box-shadow:0 0 14px var(--doom-state-soft)}
-.doom-grid{display:grid;grid-template-columns:minmax(0,1fr) 250px;gap:14px}.doom-panel{background:var(--doom-panel);border:1px solid var(--doom-line);border-radius:20px;box-shadow:0 18px 50px rgba(0,0,0,.26);overflow:hidden}.doom-panel.main{min-width:0}.doom-aside{padding:14px}.doom-aside h2{margin:0 0 10px;font-size:12px;letter-spacing:.12em;color:var(--doom-muted);text-transform:uppercase}
-.doom-metric{display:grid;grid-template-columns:1fr auto;gap:8px;padding:9px 0;border-bottom:1px solid color-mix(in srgb,var(--doom-line) 70%,transparent);font-size:13px}.doom-metric:last-child{border-bottom:0}.doom-metric .label{color:var(--doom-muted)}.doom-metric .value{text-align:right}
-.doom-key{display:flex;gap:8px;padding:12px;border-bottom:1px solid var(--doom-line)}.doom-input{flex:1;min-width:0;border:1px solid var(--doom-line);background:color-mix(in srgb,var(--doom-bg-2) 92%,transparent);color:var(--doom-text);border-radius:12px;padding:12px 13px}.doom-input:focus{outline:2px solid color-mix(in srgb,var(--doom-state) 60%,transparent);border-color:var(--doom-state)}.doom-btn{border:1px solid color-mix(in srgb,var(--doom-state) 70%,var(--doom-line));background:var(--doom-forest-main);color:#F7FFF9;border-radius:12px;padding:0 16px;font-weight:700;box-shadow:0 0 14px var(--doom-state-soft)}.doom-btn:hover{background:var(--doom-forest-active)}.doom-btn:disabled{opacity:.5;cursor:not-allowed}
-.doom-messages{min-height:58vh;max-height:72vh;overflow:auto;padding:18px}.doom-empty{min-height:50vh;display:grid;place-items:center;text-align:center;color:var(--doom-muted);padding:18px}.doom-empty strong{display:block;color:var(--doom-text);font-size:18px;margin-bottom:6px}.doom-msg{display:flex;margin:10px 0}.doom-msg.user{justify-content:flex-end}.doom-bubble{max-width:88%;padding:12px 14px;line-height:1.58;white-space:pre-wrap;border-radius:16px;border:1px solid var(--doom-line);background:color-mix(in srgb,var(--doom-panel) 86%,var(--doom-bg-2))}.doom-msg.user .doom-bubble{background:var(--doom-state-soft);border-color:color-mix(in srgb,var(--doom-state) 46%,var(--doom-line))}.doom-msg.doom .doom-bubble{box-shadow:inset 2px 0 0 var(--doom-state)}.doom-inputbar{display:flex;gap:9px;padding:12px;border-top:1px solid var(--doom-line)}.doom-hint{font-size:11px;color:var(--doom-muted);padding:0 13px 12px}
-.state-online{--doom-state:#8DD5B3;--doom-state-soft:rgba(141,213,179,.16);--doom-state-glow:rgba(141,213,179,.38)}.state-thinking,.state-analysis{--doom-state:#B9A9EE;--doom-state-soft:rgba(185,169,238,.16);--doom-state-glow:rgba(185,169,238,.35)}.state-error{--doom-state:#FF9A90;--doom-state-soft:rgba(255,154,144,.15);--doom-state-glow:rgba(255,154,144,.32);--doom-rune:#0A110D}.state-success{--doom-state:#91D5A0;--doom-state-soft:rgba(145,213,160,.15);--doom-state-glow:rgba(145,213,160,.33)}.state-warning{--doom-state:#F1C46B;--doom-state-soft:rgba(241,196,107,.15);--doom-state-glow:rgba(241,196,107,.30)}.state-info{--doom-state:#8CBFD4;--doom-state-soft:rgba(140,191,212,.15);--doom-state-glow:rgba(140,191,212,.30)}.state-creation{--doom-state:#DFA8D2;--doom-state-soft:rgba(223,168,210,.15);--doom-state-glow:rgba(223,168,210,.30)}.state-execution{--doom-state:#9FD2B1;--doom-state-soft:rgba(159,210,177,.15);--doom-state-glow:rgba(159,210,177,.30)}.state-memory{--doom-state:#A5B8E7;--doom-state-soft:rgba(165,184,231,.15);--doom-state-glow:rgba(165,184,231,.30)}.state-study{--doom-state:#E9ECE8;--doom-state-soft:rgba(233,236,232,.14);--doom-state-glow:rgba(233,236,232,.24)}.state-offline{--doom-state:#C9AE86;--doom-state-soft:rgba(201,174,134,.15);--doom-state-glow:rgba(201,174,134,.30)}.state-speculation{--doom-state:#C5ACEA;--doom-state-soft:rgba(197,172,234,.16);--doom-state-glow:rgba(197,172,234,.32)}
-.state-error .doom-rune{color:#0A110D}.state-error .doom-rune.active{background:#0A110D;color:#FF9A90;border-color:#0A110D}.state-study .doom-rune.active{color:#233228}
-@media (max-width:860px){.doom-grid{grid-template-columns:1fr}.doom-aside{order:2}}@media (max-width:620px){.doom-shell{padding:12px 9px 20px}.doom-topbar{align-items:flex-start}.doom-runes{max-width:46%}.doom-messages{min-height:62vh;max-height:72vh;padding:14px}.doom-bubble{max-width:94%}.doom-btn{padding:0 13px}.doom-key{flex-wrap:wrap}.doom-key .doom-input{flex-basis:100%}}
-</style></head><body><div id="doomShell" class="doom-shell state-online"><header class="doom-topbar"><div class="doom-brand"><div class="doom-orb" aria-hidden="true">◉</div><div><h1>DOOM</h1><div class="doom-sub">PERSONAL AI · FOREST CORE</div></div></div><div class="doom-actions"><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div></header><div class="doom-statebar"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div></div><div class="doom-grid"><section class="doom-panel main"><div class="doom-key"><input id="key" class="doom-input" type="password" placeholder="Chave Doom" autocomplete="off" aria-label="Chave Doom"><button id="saveKey" class="doom-btn">Salvar</button></div><div id="messages" class="doom-messages" aria-live="polite"><div class="doom-empty"><div><strong>Doom está pronta.</strong><span>O sistema está no estado ONLINE.<br>Digite uma mensagem para iniciar.</span></div></div></div><form id="form" class="doom-inputbar"><input id="input" class="doom-input" autocomplete="off" placeholder="Fale com Doom..." aria-label="Mensagem para Doom"><button id="send" class="doom-btn">Enviar</button></form><div class="doom-hint">A chave Doom fica somente neste navegador. O cérebro e a memória rodam no servidor.</div></section><aside class="doom-panel doom-aside"><h2>Sistema</h2><div class="doom-metric"><span class="label">Estado</span><span class="value" id="systemState">ONLINE</span></div><div class="doom-metric"><span class="label">Núcleo</span><span class="value" id="engineValue">Doom</span></div><div class="doom-metric"><span class="label">Memória</span><span class="value">ATIVA</span></div><div class="doom-metric"><span class="label">Visual</span><span class="value">FOREST CORE</span></div><div class="doom-metric"><span class="label">Acesso</span><span class="value">SEGURO</span></div></aside></div></div><script>
-const DOOM_CODEX = {
-  online:{label:'ONLINE',className:'state-online',rune:11}, thinking:{label:'ANALISANDO',className:'state-thinking',rune:2}, error:{label:'ERRO',className:'state-error',rune:3},
-  success:{label:'SUCESSO',className:'state-success',rune:4}, warning:{label:'AVISO',className:'state-warning',rune:5}, info:{label:'INFO',className:'state-info',rune:6},
-  analysis:{label:'ANÁLISE / POSSIBILIDADES',className:'state-analysis',rune:7}, creation:{label:'CRIAÇÃO',className:'state-creation',rune:8}, execution:{label:'EXECUÇÃO',className:'state-execution',rune:9},
-  memory:{label:'MEMÓRIA',className:'state-memory',rune:10}, study:{label:'ESTUDO',className:'state-study',rune:11}, offline:{label:'OFFLINE',className:'state-offline',rune:12}, speculation:{label:'ESPECULAÇÃO',className:'state-speculation',rune:13}
-};
-const $=s=>document.querySelector(s), key=$('#key'), input=$('#input'), msgs=$('#messages'), form=$('#form'), send=$('#send'), root=document.documentElement, shell=$('#doomShell'), stateLabel=$('#stateLabel'), stateDot=$('#stateDot'), engineValue=$('#engineValue');
-key.value=localStorage.getItem('doom_key')||'';
-function setTheme(theme){root.dataset.theme=theme;localStorage.setItem('doom_theme',theme);$('#themeBtn').textContent=theme==='dark'?'☼':'◐';}
-setTheme(localStorage.getItem('doom_theme')||'dark');
-$('#themeBtn').onclick=()=>setTheme(root.dataset.theme==='dark'?'light':'dark');
-function setState(name){const s=DOOM_CODEX[name]||DOOM_CODEX.online;Object.values(DOOM_CODEX).forEach(x=>shell.classList.remove(x.className));shell.classList.add(s.className);stateLabel.textContent=s.label;$('#systemState').textContent=s.label;stateDot.className='doom-dot';document.querySelectorAll('.doom-rune').forEach((el,i)=>el.classList.toggle('active',i+1===s.rune));}
-function inferLocalState(text){const t=text.toLowerCase();if(/(quem sou eu|o que você sabe sobre mim|o que sabe sobre mim|memória|lembra|lembrar|esquecer)/.test(t))return'memory';if(/(estud|aprender|exercício|matemática|enem|aula)/.test(t))return'study';if(/(analise|análise|possibil|compare|cenário|hipótese)/.test(t))return'analysis';if(/(crie|criar|escreva|desenhe|ideia|projeto)/.test(t))return'creation';if(/(execute|executar|abra|rodar|rode|faça isso)/.test(t))return'execution';if(/(talvez|especul|e se|hipotetic)/.test(t))return'speculation';return'thinking';}
-function addMessage(role,text){if(msgs.querySelector('.doom-empty'))msgs.innerHTML='';const row=document.createElement('div');row.className=`doom-msg ${role}`;const bubble=document.createElement('div');bubble.className='doom-bubble';bubble.textContent=text;row.appendChild(bubble);msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;}
-$('#saveKey').onclick=()=>{localStorage.setItem('doom_key',key.value.trim());setState('success');setTimeout(()=>setState('online'),900);};
-async function health(){try{const r=await fetch('/health');const d=await r.json();engineValue.textContent=`${d.name} v${d.version}`;setState('online');}catch{engineValue.textContent='indisponível';setState('offline');}}
-form.onsubmit=async e=>{e.preventDefault();const text=input.value.trim();if(!text)return;if(!key.value.trim())return alert('Digite sua Chave Doom primeiro.');addMessage('user',text);input.value='';send.disabled=true;setState(inferLocalState(text));try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','X-Doom-Key':key.value.trim()},body:JSON.stringify({session_id:'main',message:text})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Erro');addMessage('doom',d.reply);setState(d.mode||'success');setTimeout(()=>setState('online'),1600);}catch(err){addMessage('doom','Não consegui concluir a solicitação: '+err.message);setState('error');}finally{send.disabled=false;input.focus();}};
-health();
-</script></body></html>
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#1A5C2E"><meta name="description" content="Doom Personal AI — Forest Core"><link rel="manifest" href="/static/manifest.webmanifest"><link rel="stylesheet" href="/static/doom.css"><title>Doom — Personal AI</title></head>
+<body>
+<div id="doomShell" class="doom-shell state-online">
+  <div class="doom-frame">
+    <header class="doom-topbar">
+      <div class="doom-brand"><div class="doom-orb" aria-hidden="true">◉</div><div><h1>DOOM</h1><div class="doom-sub">PERSONAL AI · FOREST CORE</div></div></div>
+      <div class="doom-top-center"><div class="eyebrow">DOOM CORTEX</div><div class="status-name" id="modeNote">ONLINE</div></div>
+      <div class="doom-actions"><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div>
+    </header>
+    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.0</div></div>
+    <main class="doom-layout">
+      <aside class="doom-panel doom-side left" aria-label="Cortex">
+        <h2>Cortex</h2>
+        <div class="doom-module"><div class="k">Núcleo</div><div class="v">DOOM CORE</div><div class="s">Personalidade, regras e contexto.</div><div class="doom-bar"><span style="width:86%"></span></div></div>
+        <div class="doom-module"><div class="k">Memória</div><div class="v">ATIVA</div><div class="s">Perfil + memórias autorizadas.</div><div class="doom-bar"><span style="width:72%"></span></div></div>
+        <div class="doom-module"><div class="k">Roteamento</div><div class="v">PRONTO</div><div class="s">Arquitetura preparada para múltiplos cérebros.</div></div>
+      </aside>
+      <section class="doom-panel doom-main">
+        <div class="doom-key"><input id="key" class="doom-input" type="password" placeholder="Chave Doom" autocomplete="off" aria-label="Chave Doom"><button id="saveKey" class="doom-btn">Salvar</button></div>
+        <div class="doom-center-banner"><div class="doom-center-title">COMAND CENTER</div><div class="doom-center-mode" id="centerMode">INTERFACE ATIVA</div></div>
+        <div id="messages" class="doom-messages" aria-live="polite"><div class="doom-empty"><div><div class="core-symbol">◉</div><strong>Doom está pronta.</strong><span>O sistema visual está online.<br>O Cortex aguarda um comando.</span></div></div></div>
+        <form id="form" class="doom-inputbar"><input id="input" class="doom-input" autocomplete="off" placeholder="Fale com Doom..." aria-label="Mensagem para Doom"><button id="send" class="doom-btn">Enviar</button></form><div class="doom-hint">A chave Doom fica somente neste navegador. Estado visual, memória e cérebro são controlados pelo servidor.</div>
+        <div class="doom-rune-corner" aria-hidden="true"><span>◈</span><span>◇</span><span>△</span><span>○</span></div>
+      </section>
+      <aside class="doom-panel doom-side right" aria-label="Telemetria">
+        <h2>Telemetria</h2>
+        <div class="doom-module"><div class="k">Estado</div><div class="v" id="systemState">ONLINE</div><div class="s">Estado semântico atual.</div></div>
+        <div class="doom-module"><div class="k">Cérebro</div><div class="v" id="engineValue">CORTEX</div><div class="s" id="engineNote">Roteamento automático.</div></div>
+        <div class="doom-module"><div class="k">Link</div><div class="v" id="linkValue">ONLINE</div><div class="s">Conectividade com o núcleo.</div></div>
+        <div class="doom-module"><div class="k">Visual</div><div class="v">FOREST CORE</div><div class="s">Accents semânticos + runas.</div></div>
+      </aside>
+    </main>
+    <footer class="doom-footer"><span>DOOM SYSTEM</span><span>IDENTITY · MEMORY · CORTEX · VISUAL CODEX</span></footer>
+  </div>
+</div>
+<script src="/static/doom-state.js"></script>
+</body></html>

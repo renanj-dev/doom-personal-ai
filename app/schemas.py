@@ -11,6 +11,10 @@ class ChatResponse(BaseModel):
     session_id: str
     reply: str
     mode: str = "success"
+    brain: str | None = None
+    model: str | None = None
+    task: str | None = None
+    fallback_count: int = 0
 
 
 class MemoryCreate(BaseModel):

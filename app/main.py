@@ -12,11 +12,12 @@ from .config import get_settings
 from .db import get_db, init_db
 from .models import Message, Memory
 from .schemas import ChatRequest, ChatResponse, MemoryCreate, MemoryOut
-from .llm import ask_doom, build_user_profile, is_profile_query
+from .llm import build_user_profile, is_profile_query
+from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="0.8.0")
+app = FastAPI(title="Doom Personal AI", version="1.0.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -44,6 +45,16 @@ def auth(x_doom_key: Annotated[str | None, Header()] = None) -> None:
 @app.get("/health")
 def health() -> dict:
     return {"status": "online", "name": "Doom", "version": app.version}
+
+@app.get("/api/cortex", dependencies=[Depends(auth)])
+def cortex_status() -> dict:
+    providers = configured_providers()
+    return {
+        "mode": "auto",
+        "providers": providers,
+        "primary": providers[0] if providers else None,
+        "models": {p: provider_model(p) for p in providers},
+    }
 
 
 @app.get("/", include_in_schema=False)
@@ -124,6 +135,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     memory_text = "\n".join(f"[{m.category}] {m.content}" for m in memories)
 
     mode = infer_mode(payload.message)
+    route = None
     try:
         recent_payload = [{"role": m.role, "content": m.content} for m in recent]
         if is_profile_query(payload.message):
@@ -140,9 +152,10 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 reply = build_user_profile(profile_rows, settings.doom_user_name)
                 mode = "memory"
             else:
-                reply = ask_doom(
+                reply, route = ask_with_cortex(
                     memory_text=memory_text,
                     recent_messages=recent_payload,
+                    user_message=payload.message,
                 )
     except Exception as exc:
         # Remove the just-added user message only when the provider fails, so a retry is clean.
@@ -152,4 +165,12 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
 
     db.add(Message(session_id=payload.session_id, role="assistant", content=reply))
     db.commit()
-    return ChatResponse(session_id=payload.session_id, reply=reply, mode="success" if mode == "thinking" else mode)
+    return ChatResponse(
+        session_id=payload.session_id,
+        reply=reply,
+        mode="success" if mode == "thinking" else mode,
+        brain=(route.provider if route else "doom-core"),
+        model=(route.model if route else None),
+        task=(route.task if route else "memory"),
+        fallback_count=(route.fallback_count if route else 0),
+    )

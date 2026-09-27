@@ -19,3 +19,8 @@ See `README_CLOUD.md` and `render.yaml` for the Render + Neon + OpenRouter deplo
 ## Visual Codex Forest Core
 
 A interface usa o sistema semântico de estados documentado em `DOOM_CODEX.md`.
+
+
+## Doom Cortex v1.0
+
+Doom now uses a routing layer that selects among configured AI providers and can fall back when a provider fails. See `DOOM_CORTEX.md`.

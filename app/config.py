@@ -6,20 +6,26 @@ class Settings(BaseSettings):
     doom_api_key: str
     doom_user_name: str = "Renan"
 
-    # Supported providers: ollama, openai, openrouter.
+    # Legacy/default provider setting. Cortex uses cortex_providers when configured.
     llm_provider: str = "openrouter"
 
-    # Model selected by the provider.
+    # Legacy/default model setting. Provider-specific models below are preferred by Cortex.
     doom_model: str = "openrouter/free"
+
+    # Doom Cortex: comma-separated provider priority pool.
+    cortex_providers: str = "openrouter"
 
     # Local Ollama settings.
     ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_model: str = "qwen3:0.6b"
 
     # OpenAI settings.
     openai_api_key: str | None = None
+    openai_model: str = "gpt-5.6-luna"
 
     # OpenRouter settings.
     openrouter_api_key: str | None = None
+    openrouter_model: str = "openrouter/free"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_site_url: str | None = None
     openrouter_site_name: str = "Doom Personal AI"
