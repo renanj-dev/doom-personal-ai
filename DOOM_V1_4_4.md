@@ -1,96 +1,31 @@
-# Doom v1.4.4 — History & Memory Management
+# Doom v1.4.4 — Core Integration
 
-Esta versão corrige o gerenciamento manual que faltava/estava inconsistente em duas áreas:
+Esta é a atualização consolidada sobre o **Doom Cloud v1.3 enviado por Renan**.
 
-1. **Histórico:** exclusão manual de uma conversa pelo `session_id`, removendo a conversa e suas mensagens em uma única transação.
-2. **Memória:** edição persistente do registro de memória, com validação, retorno do estado efetivamente salvo e controle de revisão para impedir que uma edição antiga sobrescreva uma alteração mais recente.
+## Incluído
 
-## Regra de separação
+- Tool Engine integrado ao servidor real.
+- Cortex capaz de interpretar pedidos de ferramenta em JSON estrito.
+- Execução limitada ao catálogo de ferramentas registradas.
+- Security & Permissions aplicado antes da execução.
+- Tokens de confirmação para ferramentas `confirm`.
+- Tool Audit persistente no banco.
+- `GET /api/tools` e `POST /api/tools/execute`.
+- `GET /api/audit/tools`.
+- Exclusão manual de históricos no frontend e API.
+- Edição persistente de memórias via `PATCH /api/memories/{memory_id}`.
+- Revisão de memória (`revision`) para evitar sobrescrita silenciosa.
+- Migração aditiva de `memories` para instalações criadas na v1.3.
+- Command Center e Forest Core preservados.
 
-Excluir um histórico **não exclui memórias persistentes**.
-Editar uma memória **não modifica o histórico da conversa**.
+## Operações manuais
 
-```text
-Histórico
-  conversations
-       └── messages
+### Excluir histórico
+No painel **Histórico**, use `Excluir` em uma conversa. A operação remove a conversa e suas mensagens. Memórias permanentes ficam intactas.
 
-Memória persistente
-  memories
-```
+### Editar memória
+No painel **Memória**, use `Editar`. O servidor valida e grava a alteração; o frontend usa o retorno canônico do servidor e a revisão atualizada.
 
-## Segurança v1.4.3
+## Segurança
 
-As mutações passam por uma função `authorize(...)` opcional. No Doom completo, conecte essa função ao:
-
-```python
-SecureToolGate.authorize
-```
-
-Use os identificadores:
-
-- `history_delete`
-- `memory_edit`
-
-Recomendação de padrão: `CONFIRM`.
-
-## API
-
-O `router.py` oferece um adaptador FastAPI:
-
-- `GET /api/conversations`
-- `DELETE /api/conversations/{session_id}`
-- `GET /api/memories`
-- `PATCH /api/memories/{memory_id}?session_id=<id>`
-
-Na edição de memória, envie apenas os campos que deseja alterar:
-
-```json
-{
-  "content": "Novo conteúdo",
-  "category": "project",
-  "enabled": true,
-  "expected_revision": 3,
-  "confirmation_token": "..."
-}
-```
-
-`expected_revision` é opcional, mas o frontend do Doom deve enviá-lo. Assim, se a memória já tiver sido alterada em outro lugar, o backend responde `409` em vez de sobrescrever a mudança.
-
-## Correção do bug de edição
-
-O frontend não deve considerar uma edição concluída apenas porque o texto mudou localmente. O fluxo correto é:
-
-```text
-abrir memória
-   ↓
-editar no formulário
-   ↓
-PATCH /api/memories/{id}
-   ↓
-backend valida + grava + incrementa revision
-   ↓
-backend devolve memória salva
-   ↓
-frontend substitui o objeto local pelo retorno do backend
-```
-
-Isso elimina o estado visual "editado" que não foi persistido no banco. Para confirmações do v1.4.3, o conteúdo é representado por SHA-256 no material de autorização; o texto da memória não entra no log de auditoria.
-
-## Testes
-
-```bash
-python -m unittest -v test_memory_history.py
-```
-
-O conjunto cobre:
-
-- exclusão de conversa + mensagens;
-- independência entre histórico e memória;
-- persistência da edição;
-- rejeição de conteúdo vazio;
-- conflito de revisão;
-- autorização via v1.4.3;
-- auditoria sem gravar o conteúdo da memória.
-
-O módulo não adiciona shell, PowerShell, subprocess ou execução arbitrária.
+A v1.4.4 não habilita shell livre, PowerShell, subprocess ou execução arbitrária de código. As ferramentas iniciais são `calculator`, `current_time` e `system_info`.

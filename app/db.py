@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 from .config import get_settings
 
@@ -26,7 +26,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
 
 def init_db() -> None:
-    from .models import Conversation, Memory, Message  # noqa: F401
+    from .models import Conversation, Memory, Message, MemoryProposal, ToolPermission, ToolConfirmation, ToolAuditRecord  # noqa: F401
     Base.metadata.create_all(bind=engine)
 
 

@@ -32,6 +32,8 @@ class MemoryOut(BaseModel):
     content: str
     active: bool
     created_at: datetime
+    updated_at: datetime | None = None
+    revision: int = 1
 
 
 class ConversationCreate(BaseModel):
@@ -73,3 +75,16 @@ class MemoryProposalOut(BaseModel):
     status: str
     created_at: datetime
     resolved_at: datetime | None = None
+
+class MemoryUpdate(BaseModel):
+    content: str | None = Field(default=None, min_length=1, max_length=5000)
+    category: str | None = Field(default=None, min_length=1, max_length=64)
+    active: bool | None = None
+    expected_revision: int | None = Field(default=None, ge=1)
+
+
+class ToolExecuteRequest(BaseModel):
+    session_id: str = Field(default="main", min_length=1, max_length=128)
+    tool: str = Field(min_length=1, max_length=128)
+    args: dict = Field(default_factory=dict)
+    confirmation_token: str | None = None

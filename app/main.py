@@ -10,16 +10,17 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import Conversation, Message, Memory, MemoryProposal
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut)
+from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
 from .memory_engine import (backfill_legacy_conversations, delete_conversation, get_messages, get_or_create_conversation, list_conversations, new_session_id, search_history, touch_conversation, detect_memory_intent, extract_memory_content, infer_memory_category, create_memory_proposal, get_pending_proposal, resolve_memory_proposal, cancel_memory_proposal, relevant_memories, AFFIRMATIVE_MEMORY, NEGATIVE_MEMORY)
 from .context_engine import build_context
+from .tools import TOOL_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.3.0")
+app = FastAPI(title="Doom Personal AI", version="1.4.4")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -96,10 +97,31 @@ def list_memories(db: Session = Depends(get_db)):
 
 @app.post("/api/memories", response_model=MemoryOut, dependencies=[Depends(auth)])
 def create_memory(payload: MemoryCreate, db: Session = Depends(get_db)):
-    row = Memory(category=payload.category, content=payload.content)
+    row = Memory(category=payload.category, content=payload.content, updated_at=__import__("datetime").datetime.now(__import__("datetime").timezone.utc), revision=1)
     db.add(row)
     db.commit()
     db.refresh(row)
+    return row
+
+
+@app.patch("/api/memories/{memory_id}", response_model=MemoryOut, dependencies=[Depends(auth)])
+def edit_memory(memory_id: int, payload: MemoryUpdate, db: Session = Depends(get_db)):
+    row = db.get(Memory, memory_id)
+    if not row:
+        raise HTTPException(status_code=404, detail="Memória não encontrada.")
+    if payload.expected_revision is not None and getattr(row, "revision", 1) != payload.expected_revision:
+        raise HTTPException(status_code=409, detail={"message":"Memória foi alterada em outro lugar.","current_revision":getattr(row,"revision",1)})
+    if payload.content is None and payload.category is None and payload.active is None:
+        raise HTTPException(status_code=422, detail="Nenhuma alteração foi enviada.")
+    if payload.content is not None:
+        row.content = payload.content.strip()
+    if payload.category is not None:
+        row.category = payload.category.strip()
+    if payload.active is not None:
+        row.active = payload.active
+    row.revision = getattr(row, "revision", 1) + 1
+    row.updated_at = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    db.commit(); db.refresh(row)
     return row
 
 
@@ -147,6 +169,25 @@ def reject_memory(proposal_id: int, db: Session = Depends(get_db)):
 @app.get("/api/memories/search", response_model=list[MemoryOut], dependencies=[Depends(auth)])
 def search_memories(q: str, db: Session = Depends(get_db)):
     return relevant_memories(db, q, limit=20)
+
+
+@app.get("/api/tools", dependencies=[Depends(auth)])
+def tools_catalog():
+    return {"tools": TOOL_ENGINE.catalog()}
+
+
+@app.post("/api/tools/execute", dependencies=[Depends(auth)])
+def execute_tool(payload: ToolExecuteRequest):
+    return TOOL_ENGINE.execute(payload.tool, payload.args, payload.session_id, settings.doom_user_name, payload.confirmation_token)
+
+
+@app.get("/api/audit/tools", dependencies=[Depends(auth)])
+def tool_audit(limit: int = 100, session_id: str | None = None, db: Session = Depends(get_db)):
+    stmt = select(ToolAuditRecord).order_by(ToolAuditRecord.timestamp.desc()).limit(min(limit, 500))
+    if session_id:
+        stmt = stmt.where(ToolAuditRecord.session_id == session_id)
+    rows = db.scalars(stmt).all()
+    return [{"timestamp":r.timestamp.isoformat() if r.timestamp else None,"session_id":r.session_id,"tool":r.tool,"action":r.action,"permission":r.permission,"ok":r.ok,"detail":r.detail} for r in rows]
 
 
 @app.get("/api/conversations", response_model=list[ConversationOut], dependencies=[Depends(auth)])
@@ -308,6 +349,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
                     recent_messages=compact_messages,
                     user_message=payload.message,
                     profile_text=context_bundle.profile_text,
+                    session_id=payload.session_id,
                 )
     except Exception as exc:
         # Remove the just-added user message only when the provider fails, so a retry is clean.
