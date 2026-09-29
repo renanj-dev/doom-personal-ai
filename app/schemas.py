@@ -15,6 +15,10 @@ class ChatResponse(BaseModel):
     model: str | None = None
     task: str | None = None
     fallback_count: int = 0
+    context_strategy: str | None = None
+    context_recent: int = 0
+    context_recalled: int = 0
+    memories_used: int = 0
 
 
 class MemoryCreate(BaseModel):

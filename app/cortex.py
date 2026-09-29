@@ -98,7 +98,7 @@ def route_task(message: str) -> tuple[str, list[str], str]:
     return task, candidates, reason
 
 
-def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message: str) -> tuple[str, CortexRoute]:
+def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message: str, profile_text: str | None = None) -> tuple[str, CortexRoute]:
     task, candidates, reason = route_task(user_message)
     if not candidates:
         raise RuntimeError("O Cortex não encontrou nenhum cérebro configurado e disponível.")
@@ -106,7 +106,7 @@ def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message:
     errors: list[str] = []
     for index, provider in enumerate(candidates):
         try:
-            reply = ask_doom(memory_text=memory_text, recent_messages=recent_messages, provider=provider)
+            reply = ask_doom(memory_text=memory_text, recent_messages=recent_messages, provider=provider, profile_text=profile_text)
             route = CortexRoute(
                 task=task,
                 task_label=TASK_LABELS.get(task, task.upper()),

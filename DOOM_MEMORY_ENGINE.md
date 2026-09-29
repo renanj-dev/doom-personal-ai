@@ -5,7 +5,7 @@ The Memory Engine separates four concepts:
 1. **Conversation history** — complete messages grouped into sessions.
 2. **Persistent memory** — curated facts/preferences stored for future context.
 3. **Memory proposals** — candidate memories that require explicit confirmation before becoming persistent.
-4. **Current context** — a bounded slice of the active conversation plus relevant memories sent to the selected AI provider.
+4. **Current context** — a bounded slice of the active conversation plus relevant memories sent to the selected AI provider. The dedicated v1.3 Context Engine owns this assembly.
 
 ## Memory intelligence
 

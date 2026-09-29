@@ -1,4 +1,4 @@
-# Doom Personal AI v1.2.1
+# Doom Personal AI v1.3
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -38,3 +38,24 @@ See `DOOM_MEMORY_ENGINE.md` for the data model and API.
 Doom now supports explicit memory proposals, confirmation-based persistence, relevance-ranked memory context, memory search, and memory management from the web UI.
 
 See `DOOM_MEMORY_ENGINE.md` for details.
+
+## Context Engine v1.3
+
+Doom v1.3 introduces a dedicated Context Engine that builds a focused context for each request:
+
+```text
+Current request
+    ↓
+Recent conversation
+    + relevant historical recall
+    + relevant persistent memories
+    + focused user profile
+    ↓
+Doom Cortex
+    ↓
+Selected AI provider
+```
+
+This first semantic layer is deterministic and dependency-free. It can later be replaced by embeddings/vector search without changing the Cortex or Doom UI contracts.
+
+The Command Center exposes context telemetry so the user can see how much recent history, recalled history, and persistent memory were included in a request.

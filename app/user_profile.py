@@ -136,3 +136,44 @@ def render_profile() -> str:
     lines.extend(f"- Interesse: {x}" for x in USER_PROFILE["career"]["interests"])
     lines += ["", "NOTA", USER_PROFILE["assistant_note"]]
     return "\n".join(lines)
+
+
+def render_profile_for_query(query: str) -> str:
+    """Render only the profile sections most relevant to the current query."""
+    q = (query or "").lower()
+    sections: list[str] = ["identity"]
+    if any(k in q for k in ("estud", "aprender", "enem", "aula", "matemática", "faculdade")):
+        sections += ["education"]
+    if any(k in q for k in ("trabalho", "currículo", "vaga", "emprego", "habilidade")):
+        sections += ["work_and_skills"]
+    if any(k in q for k in ("pc", "computador", "python", "programa", "tecnologia", "ia", "ollama", "código")):
+        sections += ["technology"]
+    if any(k in q for k in ("doom", "projeto", "cortex", "memória", "layout", "app")):
+        sections += ["projects"]
+    if any(k in q for k in ("carreira", "medicina", "profissão", "futuro")):
+        sections += ["career"]
+    if not len(sections) > 1:
+        sections += ["thinking_and_communication"]
+
+    unique_sections = list(dict.fromkeys(sections))
+    lines = [
+        "PERFIL FOCADO DO USUÁRIO — RENAN",
+        "Doom e Renan são entidades diferentes. Use somente como contexto durável."
+    ]
+    for section in unique_sections:
+        data = USER_PROFILE.get(section, {})
+        title = section.replace("_", " ").upper()
+        lines += ["", title]
+        if isinstance(data, dict):
+            for key, value in data.items():
+                label = key.replace("_", " ").capitalize()
+                if isinstance(value, list):
+                    lines.append(f"- {label}:")
+                    lines.extend(f"  - {item}" for item in value)
+                elif isinstance(value, dict):
+                    lines.append(f"- {label}:")
+                    for subkey, subvalue in value.items():
+                        lines.append(f"  - {subkey.replace('_', ' ').capitalize()}: {subvalue}")
+                else:
+                    lines.append(f"- {label}: {value}")
+    return "\n".join(lines)

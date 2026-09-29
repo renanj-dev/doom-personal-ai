@@ -16,9 +16,10 @@ from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
 from .memory_engine import (backfill_legacy_conversations, delete_conversation, get_messages, get_or_create_conversation, list_conversations, new_session_id, search_history, touch_conversation, detect_memory_intent, extract_memory_content, infer_memory_category, create_memory_proposal, get_pending_proposal, resolve_memory_proposal, cancel_memory_proposal, relevant_memories, AFFIRMATIVE_MEMORY, NEGATIVE_MEMORY)
+from .context_engine import build_context
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.2.1")
+app = FastAPI(title="Doom Personal AI", version="1.3.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -61,6 +62,23 @@ def cortex_status() -> dict:
         "primary": providers[0] if providers else None,
         "models": {p: provider_model(p) for p in providers},
     }
+
+
+@app.get("/api/context/preview", dependencies=[Depends(auth)])
+def context_preview(session_id: str = "main", q: str = "") -> dict:
+    db = SessionLocal()
+    try:
+        bundle = build_context(db, session_id, q)
+        return {
+            "strategy": bundle.strategy,
+            "recent": bundle.recent_messages,
+            "recalled": bundle.recalled_messages,
+            "memories_used": bundle.memory_count,
+            "recent_count": bundle.recent_count,
+            "recalled_count": bundle.recalled_count,
+        }
+    finally:
+        db.close()
 
 
 @app.get("/", include_in_schema=False)
@@ -224,20 +242,20 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     db.commit()
     touch_conversation(db, payload.session_id, payload.message)
 
-    recent = db.scalars(
+    recent_db = db.scalars(
         select(Message)
         .where(Message.session_id == payload.session_id)
         .order_by(Message.created_at.desc())
         .limit(24)
     ).all()
-    recent.reverse()
+    recent_db.reverse()
 
     mode = infer_mode(payload.message)
     route = None
+    context_bundle = None
     try:
-        recent_payload = [{"role": m.role, "content": m.content} for m in recent]
-        active_memories = relevant_memories(db, payload.message, limit=10)
-        memory_text = "\n".join(f"[{m.category}] {m.content}" for m in active_memories)
+        context_bundle = build_context(db, payload.session_id, payload.message)
+        recent = recent_db
         pending = get_pending_proposal(db, payload.session_id)
         normalized = payload.message.strip().lower()
 
@@ -275,10 +293,21 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 reply = build_user_profile(profile_rows, settings.doom_user_name)
                 mode = "memory"
             else:
+                combined_messages = context_bundle.recent_messages + context_bundle.recalled_messages
+                # De-duplicate exact role/content pairs while preserving recent ordering.
+                seen_pairs = set()
+                compact_messages = []
+                for item in combined_messages:
+                    pair = (item["role"], item["content"])
+                    if pair in seen_pairs:
+                        continue
+                    seen_pairs.add(pair)
+                    compact_messages.append(item)
                 reply, route = ask_with_cortex(
-                    memory_text=memory_text,
-                    recent_messages=recent_payload,
+                    memory_text=context_bundle.memory_text,
+                    recent_messages=compact_messages,
                     user_message=payload.message,
+                    profile_text=context_bundle.profile_text,
                 )
     except Exception as exc:
         # Remove the just-added user message only when the provider fails, so a retry is clean.
@@ -297,4 +326,8 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         model=(route.model if route else None),
         task=(route.task if route else "memory"),
         fallback_count=(route.fallback_count if route else 0),
+        context_strategy=(context_bundle.strategy if context_bundle and route else None),
+        context_recent=(context_bundle.recent_count if context_bundle and route else 0),
+        context_recalled=(context_bundle.recalled_count if context_bundle and route else 0),
+        memories_used=(context_bundle.memory_count if context_bundle and route else 0),
     )

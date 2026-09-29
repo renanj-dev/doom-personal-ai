@@ -40,3 +40,8 @@ CORTEX_PROVIDERS=openrouter,openai
 - `OPENAI_MODEL`
 
 The Cortex never changes Doom's identity or memory. It only chooses which configured brain should answer a task.
+
+
+## Context Engine integration (v1.3)
+
+Before a normal request reaches Cortex routing, Doom builds a focused context bundle from recent messages, relevant older messages (including cross-conversation recall), relevant persistent memories, and a focused user profile. Cortex then selects the provider without owning memory or identity.

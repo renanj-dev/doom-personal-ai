@@ -1,4 +1,4 @@
-# DOOM VISUAL CODEX — v1.1
+# DOOM VISUAL CODEX — v1.3
 
 ## Direção
 
@@ -49,3 +49,8 @@ A interface da Doom usa **Forest Core** como identidade visual permanente. O ver
 5. Em `STUDY`, o accent é branco/cinza muito claro.
 6. Respeitar `prefers-reduced-motion`.
 7. Manter texto e controles com contraste adequado.
+
+
+## v1.3 Command Center telemetry
+
+The Command Center exposes context telemetry for the active request: recent-message count, recalled-message count, and persistent-memory count. These values are informational and do not change the semantic state colors.
