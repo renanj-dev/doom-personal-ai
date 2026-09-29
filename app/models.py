@@ -110,3 +110,36 @@ class DeepSearchRun(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     error: Mapped[str] = mapped_column(Text, default="")
+
+
+class AgentRun(Base):
+    __tablename__ = "agent_runs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    user_id: Mapped[str] = mapped_column(String(128), index=True)
+    task: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(32), default="planning", index=True)
+    max_steps: Mapped[int] = mapped_column(Integer, default=0)
+    tool_calls: Mapped[int] = mapped_column(Integer, default=0)
+    run_metadata: Mapped[str] = mapped_column("metadata", Text, default="{}")
+    error: Mapped[str] = mapped_column(Text, default="")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class AgentStep(Base):
+    __tablename__ = "agent_steps"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[str] = mapped_column(String(64), index=True)
+    step_index: Mapped[int] = mapped_column(Integer)
+    step_id: Mapped[str] = mapped_column(String(64))
+    action: Mapped[str] = mapped_column(String(32))
+    description: Mapped[str] = mapped_column(Text)
+    tool_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    args: Mapped[str] = mapped_column(Text, default="{}")
+    status: Mapped[str] = mapped_column(String(32), default="pending", index=True)
+    output: Mapped[str] = mapped_column(Text, default="")
+    error: Mapped[str] = mapped_column(Text, default="")
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

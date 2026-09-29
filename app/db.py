@@ -72,6 +72,8 @@ def init_db() -> None:
         ToolAuditRecord,
         SystemSetting,
         DeepSearchRun,
+        AgentRun,
+        AgentStep,
     )
 
     Base.metadata.create_all(bind=engine)

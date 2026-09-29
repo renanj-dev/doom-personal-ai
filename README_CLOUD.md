@@ -43,9 +43,13 @@ Never commit `.env`, API keys, or database passwords. Put secrets in Render Envi
 Deep Search é um modo opcional, desligado por padrão. Quando ativado, o Core executa pesquisas em múltiplas consultas, recupera fontes e entrega o material ao Cortex para síntese. As fontes recuperadas também aparecem na interface.
 
 
-## Doom v1.5.1 — Tool Engine 2.0
+## Doom v1.6.0 — Tool Engine 2.0
 
-A v1.5.1 adiciona controle operacional das ferramentas, permissões persistentes, confirmações e execução estruturada.
+A v1.6.0 adiciona controle operacional das ferramentas, permissões persistentes, confirmações e execução estruturada.
 
 ## Doom v1.5.0 — Deep Search
 Deep Search is disabled by default and requires a configured web-search provider key before it can be activated.
+
+
+### Agent v1.6
+O Planner / Agent fica desligado por padrão. Use `AGENT_ENABLED=false` no ambiente e ative pelo próprio Doom quando quiser executar tarefas em múltiplas etapas.

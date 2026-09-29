@@ -7,6 +7,8 @@ class ChatRequest(BaseModel):
     message: str = Field(min_length=1, max_length=20000)
     # None = use the global Deep Search setting; True/False overrides it for this request.
     deep_search: bool | None = None
+    # None = use the global Agent setting; True/False overrides it for this request.
+    agent: bool | None = None
 
 
 class DeepSearchSourceOut(BaseModel):
@@ -21,6 +23,8 @@ class ToolConfirmationOut(BaseModel):
     args: dict = Field(default_factory=dict)
     confirmation_token: str
     expires_in: int = 120
+    agent_run_id: str | None = None
+    agent_step_id: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -39,6 +43,9 @@ class ChatResponse(BaseModel):
     deep_search_query: str | None = None
     deep_search_sources: list[DeepSearchSourceOut] = Field(default_factory=list)
     tool_confirmation: ToolConfirmationOut | None = None
+    agent: bool = False
+    agent_run_id: str | None = None
+    agent_status: str | None = None
 
 
 class MemoryCreate(BaseModel):
@@ -129,3 +136,12 @@ class ToolPermissionOut(BaseModel):
     mode: str
     enabled: bool
     source: str
+
+
+class AgentToggleRequest(BaseModel):
+    enabled: bool
+
+
+class AgentRunResumeRequest(BaseModel):
+    session_id: str = Field(default="main", min_length=1, max_length=128)
+    confirmation_token: str = Field(min_length=1, max_length=256)

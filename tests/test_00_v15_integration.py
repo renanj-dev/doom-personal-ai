@@ -59,7 +59,7 @@ def test_startup_toggle_and_chat():
     with TestClient(app) as client:
         h = client.get("/health")
         assert h.status_code == 200
-        assert h.json()["version"] == "1.5.1"
+        assert h.json()["version"] == "1.6.0"
 
         s = client.get("/api/deep-search", headers={"X-Doom-Key": "test-key"})
         assert s.status_code == 200
@@ -73,7 +73,7 @@ def test_startup_toggle_and_chat():
         c = client.post(
             "/api/chat",
             headers={"X-Doom-Key": "test-key"},
-            json={"session_id": "deep-test", "message": "Pesquise profundamente sobre teste"},
+            json={"session_id": "deep-test", "message": "Pesquise profundamente sobre teste", "agent": False},
         )
         assert c.status_code == 200, c.text
         data = c.json()

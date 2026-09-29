@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut)
+from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -20,9 +20,10 @@ from .context_engine import build_context
 from .tools import TOOL_ENGINE
 from .security import VALID_MODES, VALID_SCOPES, get_effective_policy, upsert_permission, delete_permission
 from .deep_search import DEEP_SEARCH_ENGINE
+from .agent import run as run_agent, resume_after_confirmation, run_list as agent_run_list
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.5.1")
+app = FastAPI(title="Doom Personal AI", version="1.6.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -54,6 +55,25 @@ def get_global_deep_search_enabled(db: Session) -> bool:
     if row is None:
         return bool(settings.deep_search_enabled)
     return row.value.strip().lower() == "true"
+
+
+def get_global_agent_enabled(db: Session) -> bool:
+    row = db.scalar(select(SystemSetting).where(SystemSetting.key == "agent_enabled"))
+    if row is None:
+        return bool(settings.agent_enabled)
+    return row.value.strip().lower() == "true"
+
+
+def set_global_agent_enabled(db: Session, enabled: bool) -> None:
+    row = db.scalar(select(SystemSetting).where(SystemSetting.key == "agent_enabled"))
+    if row is None:
+        row = SystemSetting(key="agent_enabled", value="true" if enabled else "false")
+        db.add(row)
+    else:
+        row.value = "true" if enabled else "false"
+    from datetime import datetime, timezone
+    row.updated_at = datetime.now(timezone.utc)
+    db.commit()
 
 
 def set_global_deep_search_enabled(db: Session, enabled: bool) -> None:
@@ -118,6 +138,58 @@ def deep_search_runs(limit: int = 20, db: Session = Depends(get_db)) -> list[dic
         "status": row.status, "query_count": row.query_count, "source_count": row.source_count,
         "duration_ms": row.duration_ms, "created_at": row.created_at, "error": row.error,
     } for row in rows]
+
+
+@app.get("/api/agent", dependencies=[Depends(auth)])
+def agent_status(db: Session = Depends(get_db)) -> dict:
+    return {
+        "enabled": get_global_agent_enabled(db),
+        "max_steps": settings.agent_max_steps,
+        "max_tool_calls": settings.agent_max_tool_calls,
+    }
+
+
+@app.patch("/api/agent", dependencies=[Depends(auth)])
+def toggle_agent(payload: AgentToggleRequest, db: Session = Depends(get_db)) -> dict:
+    set_global_agent_enabled(db, payload.enabled)
+    return agent_status(db)
+
+
+@app.get("/api/agent/runs", dependencies=[Depends(auth)])
+def list_agent_runs(limit: int = 20, session_id: str | None = None) -> list[dict]:
+    return agent_run_list(limit, session_id)
+
+
+@app.get("/api/agent/runs/{run_id}", dependencies=[Depends(auth)])
+def get_agent_run(run_id: str, db: Session = Depends(get_db)) -> dict:
+    row = db.query(AgentRun).filter(AgentRun.run_id == run_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Execução do Agent não encontrada.")
+    from .models import AgentStep
+    steps = db.query(AgentStep).filter(AgentStep.run_id == run_id).order_by(AgentStep.step_index.asc()).all()
+    return {
+        "run_id": row.run_id, "session_id": row.session_id, "task": row.task, "status": row.status,
+        "max_steps": row.max_steps, "tool_calls": row.tool_calls, "started_at": row.started_at,
+        "finished_at": row.finished_at, "error": row.error,
+        "steps": [{"step_index": s.step_index, "step_id": s.step_id, "action": s.action, "description": s.description,
+                   "tool_name": s.tool_name, "args": s.args, "status": s.status, "output": s.output,
+                   "error": s.error, "request_id": s.request_id, "finished_at": s.finished_at} for s in steps],
+    }
+
+
+@app.post("/api/agent/runs/{run_id}/resume", dependencies=[Depends(auth)])
+def resume_agent(run_id: str, payload: AgentRunResumeRequest, db: Session = Depends(get_db)):
+    execution = resume_after_confirmation(run_id, payload.session_id, settings.doom_user_name, payload.confirmation_token)
+    if execution.status == "failed":
+        raise HTTPException(status_code=409, detail=execution.reply)
+    if execution.status == "completed":
+        db.add(Message(session_id=payload.session_id, role="assistant", content=execution.reply))
+        db.commit()
+        touch_conversation(db, payload.session_id)
+    return {
+        "run_id": execution.run_id, "status": execution.status, "reply": execution.reply,
+        "tool_confirmation": execution.confirmation,
+    }
 
 
 @app.get("/api/context/preview", dependencies=[Depends(auth)])
@@ -406,6 +478,11 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     context_bundle = None
     deep_search_used = False
     deep_search_result = None
+    agent_used = False
+    agent_run_id = None
+    agent_status = None
+    agent_deep_search_query = None
+    agent_deep_search_sources = []
     try:
         context_bundle = build_context(db, payload.session_id, payload.message)
         recent = recent_db
@@ -457,16 +534,34 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
                     seen_pairs.add(pair)
                     compact_messages.append(item)
                 deep_search_used = get_global_deep_search_enabled(db) if payload.deep_search is None else payload.deep_search
-                if deep_search_used:
-                    deep_search_result = DEEP_SEARCH_ENGINE.research(payload.message, payload.session_id)
-                reply, route, tool_confirmation = ask_with_cortex(
-                    memory_text=context_bundle.memory_text,
-                    recent_messages=compact_messages,
-                    user_message=payload.message,
-                    profile_text=context_bundle.profile_text,
-                    session_id=payload.session_id,
-                    research_text=deep_search_result.context if deep_search_result else None,
-                )
+                agent_used = get_global_agent_enabled(db) if payload.agent is None else payload.agent
+                if agent_used:
+                    agent_result = run_agent(
+                        user_message=payload.message,
+                        session_id=payload.session_id,
+                        user_id=settings.doom_user_name,
+                        context_text=context_bundle.memory_text + "\n\n" + (context_bundle.profile_text or ""),
+                        deep_search_allowed=deep_search_used,
+                        provider=None,
+                    )
+                    reply = agent_result.reply
+                    agent_run_id = agent_result.run_id
+                    agent_status = agent_result.status
+                    tool_confirmation = agent_result.confirmation
+                    agent_deep_search_query = agent_result.deep_search_query
+                    agent_deep_search_sources = list(agent_result.deep_search_sources)
+                    route = None
+                else:
+                    if deep_search_used:
+                        deep_search_result = DEEP_SEARCH_ENGINE.research(payload.message, payload.session_id)
+                    reply, route, tool_confirmation = ask_with_cortex(
+                        memory_text=context_bundle.memory_text,
+                        recent_messages=compact_messages,
+                        user_message=payload.message,
+                        profile_text=context_bundle.profile_text,
+                        session_id=payload.session_id,
+                        research_text=deep_search_result.context if deep_search_result else None,
+                    )
     except Exception as exc:
         # Remove the just-added user message only when the provider fails, so a retry is clean.
         db.delete(recent[-1])
@@ -479,17 +574,20 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     return ChatResponse(
         session_id=payload.session_id,
         reply=reply,
-        mode="success" if mode == "thinking" else ("deep_search" if deep_search_used else mode),
-        brain=(route.provider if route else "doom-core"),
+        mode=("agent" if agent_used else ("success" if mode == "thinking" else ("deep_search" if deep_search_used else mode))),
+        brain=("doom-agent" if agent_used else (route.provider if route else "doom-core")),
         model=(route.model if route else None),
-        task=(route.task if route else "memory"),
+        task=("agent" if agent_used else (route.task if route else "memory")),
         fallback_count=(route.fallback_count if route else 0),
         context_strategy=(context_bundle.strategy if context_bundle and route else None),
         context_recent=(context_bundle.recent_count if context_bundle and route else 0),
         context_recalled=(context_bundle.recalled_count if context_bundle and route else 0),
         memories_used=(context_bundle.memory_count if context_bundle and route else 0),
         deep_search=deep_search_used,
-        deep_search_query=deep_search_result.query if deep_search_result else None,
-        deep_search_sources=[DeepSearchSourceOut(title=x.title, url=x.url, snippet=x.snippet) for x in (deep_search_result.sources if deep_search_result else ())],
+        deep_search_query=(agent_deep_search_query if agent_used else (deep_search_result.query if deep_search_result else None)),
+        deep_search_sources=([DeepSearchSourceOut(**x) for x in agent_deep_search_sources] if agent_used else [DeepSearchSourceOut(title=x.title, url=x.url, snippet=x.snippet) for x in (deep_search_result.sources if deep_search_result else ())]),
         tool_confirmation=ToolConfirmationOut(**tool_confirmation) if tool_confirmation else None,
+        agent=agent_used,
+        agent_run_id=agent_run_id,
+        agent_status=agent_status,
     )

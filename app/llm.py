@@ -160,3 +160,59 @@ def ask_doom(memory_text: str, recent_messages: list[dict], provider: str | None
     raise RuntimeError(
         f"Provedor desconhecido: {selected}. Use 'ollama', 'openai' ou 'openrouter'."
     )
+
+
+def ask_planner(prompt: str, provider: str | None = None) -> str:
+    """Ask a provider for a strictly structured Agent plan."""
+    selected = (provider or settings.provider).strip().lower()
+    system = (
+        "Você é o Planner interno da Doom. Sua única função é transformar uma tarefa em um plano "
+        "estruturado e seguro. Retorne somente o JSON solicitado pelo usuário. Não escreva Markdown, "
+        "explicações, comentários ou chamadas de ferramentas. Nunca invente capacidades."
+    )
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": prompt},
+    ]
+    if selected == "openai":
+        if not settings.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY não foi configurada.")
+        from openai import OpenAI
+        client = OpenAI(api_key=settings.openai_api_key)
+        response = client.responses.create(
+            model=settings.openai_model,
+            instructions=system,
+            input=[messages[1]],
+            store=False,
+        )
+        return _clean_content(response.output_text)
+    if selected == "openrouter":
+        if not settings.openrouter_api_key:
+            raise RuntimeError("OPENROUTER_API_KEY não foi configurada.")
+        from openai import OpenAI
+        default_headers = {}
+        if settings.openrouter_site_url:
+            default_headers["HTTP-Referer"] = settings.openrouter_site_url
+        if settings.openrouter_site_name:
+            default_headers["X-Title"] = settings.openrouter_site_name
+        client = OpenAI(
+            api_key=settings.openrouter_api_key,
+            base_url=settings.openrouter_base_url,
+            default_headers=default_headers or None,
+        )
+        response = client.chat.completions.create(model=settings.openrouter_model, messages=messages)
+        return _clean_content(response.choices[0].message.content or "")
+    if selected == "ollama":
+        payload = {
+            "model": settings.ollama_model,
+            "messages": messages,
+            "stream": False,
+            "think": False,
+            "options": {"temperature": 0.0},
+        }
+        with httpx.Client(timeout=300.0) as client:
+            response = client.post(f"{settings.ollama_base_url.rstrip('/')}/api/chat", json=payload)
+            response.raise_for_status()
+            data = response.json()
+        return _clean_content(data.get("message", {}).get("content", ""))
+    raise RuntimeError(f"Provedor desconhecido: {selected}.")

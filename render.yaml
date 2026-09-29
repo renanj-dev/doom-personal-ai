@@ -39,3 +39,9 @@ services:
         value: "true"
       - key: CORS_ORIGINS
         value: ""
+      - key: AGENT_ENABLED
+        value: "false"
+      - key: AGENT_MAX_STEPS
+        value: "8"
+      - key: AGENT_MAX_TOOL_CALLS
+        value: "5"

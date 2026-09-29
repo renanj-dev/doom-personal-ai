@@ -36,7 +36,7 @@ def test_tool_engine_2_catalog_permissions_confirmation_and_batch():
 
         health = client.get("/health")
         assert health.status_code == 200
-        assert health.json()["version"] == "1.5.1"
+        assert health.json()["version"] == "1.6.0"
 
         catalog = client.get("/api/tools", headers=headers)
         assert catalog.status_code == 200
@@ -157,7 +157,7 @@ def test_chat_schema_accepts_tool_confirmation_metadata():
         response = client.post(
             "/api/chat",
             headers=headers,
-            json={"session_id": "chat-test", "message": "use a calculadora"},
+            json={"session_id": "chat-test", "message": "use a calculadora", "agent": False},
         )
         assert response.status_code == 200, response.text
         body = response.json()

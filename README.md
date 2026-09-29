@@ -1,4 +1,4 @@
-# Doom Personal AI v1.5.1
+# Doom Personal AI v1.6.0
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -78,3 +78,9 @@ Deep Search é um modo opcional, desligado por padrão. Quando ativado, o Core e
 A camada de ferramentas foi evoluída com catálogo estruturado, validação de argumentos, permissões persistentes (global/usuário/sessão), confirmação interativa, execução em lote limitada, timeout/retry controlados e auditoria com request_id.
 
 Endpoints principais: `GET /api/tools`, `GET /api/tools/permissions`, `PUT /api/tools/permissions`, `DELETE /api/tools/permissions/{tool_name}`, `POST /api/tools/execute`, `POST /api/tools/execute-batch` e `GET /api/audit/tools`.
+
+
+## Doom v1.6.0 — Planner / Agent
+O Agent é um modo opcional do Core, desligado por padrão. Ele transforma uma tarefa em um plano estruturado de até 8 etapas, executa somente ferramentas presentes no catálogo sob as políticas do Tool Engine, pode coordenar Deep Search quando habilitado e registra cada execução no banco.
+
+Endpoints principais: `GET /api/agent`, `PATCH /api/agent`, `GET /api/agent/runs`, `GET /api/agent/runs/{run_id}` e `POST /api/agent/runs/{run_id}/resume`.

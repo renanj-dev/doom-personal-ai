@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v1.6.0 — Planner / Agent
+- modo Agent global ON/OFF e override por requisição;
+- planejamento estruturado em JSON com limites de etapas e ferramentas;
+- execução sequencial de ferramentas e coordenação opcional do Deep Search;
+- confirmação integrada ao Agent e retomada após autorização;
+- persistência de AgentRun/AgentStep e endpoints de inspeção;
+- síntese final baseada nos resultados das etapas;
+- interface com botão e telemetria próprias para o Agent;
+- Agent desligado por padrão.
+
 ## v1.5.0 — Deep Search Engine
 - Deep Search global ON/OFF com persistência em `system_settings`.
 - Pesquisa em múltiplas consultas derivadas.

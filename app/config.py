@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     deep_search_fetch_timeout: float = 12.0
     deep_search_max_page_chars: int = 12000
 
+    # Doom Planner / Agent v1.6
+    agent_enabled: bool = False
+    agent_max_steps: int = 8
+    agent_max_tool_calls: int = 5
+
     # Doom Tool Engine 2.0
     tool_timeout_seconds: float = 8.0
     tool_max_retries: int = 1

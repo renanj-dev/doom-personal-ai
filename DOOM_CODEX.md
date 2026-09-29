@@ -54,3 +54,7 @@ A interface da Doom usa **Forest Core** como identidade visual permanente. O ver
 ## v1.3 Command Center telemetry
 
 The Command Center exposes context telemetry for the active request: recent-message count, recalled-message count, and persistent-memory count. These values are informational and do not change the semantic state colors.
+
+
+## Agent v1.6
+O estado `AGENT` representa o Planner / Agent em execução. Ele usa a paleta semântica própria do Core e mantém as runas como indicador de estado.
