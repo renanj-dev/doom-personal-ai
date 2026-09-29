@@ -1,6 +1,6 @@
 # Changelog
 
-## v1.2.0 — Memory Intelligence
+## v1.2.1.0 — Memory Intelligence
 
 - Added confirmation-based memory proposals from natural-language requests.
 - Added pending/approved/rejected memory proposal lifecycle.

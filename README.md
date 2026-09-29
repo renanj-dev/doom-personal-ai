@@ -1,4 +1,4 @@
-# Doom Personal AI v1.2
+# Doom Personal AI v1.2.1
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
