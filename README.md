@@ -1,4 +1,4 @@
-# Doom Personal AI v1.4.4
+# Doom Personal AI v1.4.5
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -61,11 +61,15 @@ This first semantic layer is deterministic and dependency-free. It can later be 
 The Command Center exposes context telemetry so the user can see how much recent history, recalled history, and persistent memory were included in a request.
 
 
-## Doom v1.4.4 — Core Integration
+## Doom v1.4.5 — Core Integration
 
 This release consolidates the Tool Engine, Security & Permissions, persistent Tool Audit, manual history deletion, and reliable persistent memory editing into the Doom server itself. See `DOOM_V1_4_4.md`.
 
 
-## Doom v1.4.4
+## Doom v1.4.5
 
-The v1.4.4 release consolidates tools, permissions, audit, manual history deletion, and reliable memory editing directly into the Doom Cloud core. See `DOOM_V1_4_4.md`.
+The v1.4.5 release consolidates tools, permissions, audit, manual history deletion, and reliable memory editing directly into the Doom Cloud core. See `DOOM_V1_4_4.md`.
+
+
+### v1.4.5 — DB migration hotfix
+Compatibilidade com bancos existentes da v1.3: o startup aplica as mudanças aditivas necessárias na tabela `memories` antes das consultas da Memory Engine.

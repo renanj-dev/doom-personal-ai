@@ -20,7 +20,7 @@ from .context_engine import build_context
 from .tools import TOOL_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.4.4")
+app = FastAPI(title="Doom Personal AI", version="1.4.5")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:

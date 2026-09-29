@@ -1,5 +1,5 @@
 // Doom Context Engine v1.3 — relevant context and recall
-const DOOM_MEMORY_ENGINE = { version: '1.3.0' };
+const DOOM_MEMORY_ENGINE = { version: '1.4.5' };
 
 
 window.DOOM_CODEX={

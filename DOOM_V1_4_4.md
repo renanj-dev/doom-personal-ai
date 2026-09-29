@@ -1,4 +1,4 @@
-# Doom v1.4.4 — Core Integration
+# Doom v1.4.5 — Core Integration
 
 Esta é a atualização consolidada sobre o **Doom Cloud v1.3 enviado por Renan**.
 
@@ -28,4 +28,8 @@ No painel **Memória**, use `Editar`. O servidor valida e grava a alteração; o
 
 ## Segurança
 
-A v1.4.4 não habilita shell livre, PowerShell, subprocess ou execução arbitrária de código. As ferramentas iniciais são `calculator`, `current_time` e `system_info`.
+A v1.4.5 não habilita shell livre, PowerShell, subprocess ou execução arbitrária de código. As ferramentas iniciais são `calculator`, `current_time` e `system_info`.
+
+
+## Hotfix 1.4.5
+Correção da migração incremental da tabela `memories` para instalações que já possuíam o banco da v1.3.

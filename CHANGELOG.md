@@ -1,6 +1,12 @@
 # Changelog
 
+## 1.4.5
+- Correção de migração incremental do PostgreSQL/SQLite para bancos existentes da v1.3.
+- `memories.updated_at` e `memories.revision` agora são adicionados automaticamente sem apagar dados.
+
+
 ## v1.4.4 — Core Integration
+
 
 - integrated Tool Engine into the actual Doom server;
 - added persistent tool permissions and confirmations;
