@@ -37,3 +37,11 @@ The local Ollama path is still supported for the PC version.
 ## Secrets
 
 Never commit `.env`, API keys, or database passwords. Put secrets in Render Environment Variables.
+
+
+## Doom v1.5 — Deep Search
+Deep Search é um modo opcional, desligado por padrão. Quando ativado, o Core executa pesquisas em múltiplas consultas, recupera fontes e entrega o material ao Cortex para síntese. As fontes recuperadas também aparecem na interface.
+
+
+## Doom v1.5.0 — Deep Search
+Deep Search is disabled by default and requires a configured web-search provider key before it can be activated.

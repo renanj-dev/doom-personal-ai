@@ -70,6 +70,8 @@ def init_db() -> None:
         ToolPermission,
         ToolConfirmation,
         ToolAuditRecord,
+        SystemSetting,
+        DeepSearchRun,
     )
 
     Base.metadata.create_all(bind=engine)

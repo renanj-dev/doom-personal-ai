@@ -5,6 +5,14 @@ from pydantic import BaseModel, Field
 class ChatRequest(BaseModel):
     session_id: str = Field(default="main", min_length=1, max_length=128)
     message: str = Field(min_length=1, max_length=20000)
+    # None = use the global Deep Search setting; True/False overrides it for this request.
+    deep_search: bool | None = None
+
+
+class DeepSearchSourceOut(BaseModel):
+    title: str
+    url: str
+    snippet: str = ""
 
 
 class ChatResponse(BaseModel):
@@ -19,6 +27,9 @@ class ChatResponse(BaseModel):
     context_recent: int = 0
     context_recalled: int = 0
     memories_used: int = 0
+    deep_search: bool = False
+    deep_search_query: str | None = None
+    deep_search_sources: list[DeepSearchSourceOut] = Field(default_factory=list)
 
 
 class MemoryCreate(BaseModel):
@@ -88,3 +99,7 @@ class ToolExecuteRequest(BaseModel):
     tool: str = Field(min_length=1, max_length=128)
     args: dict = Field(default_factory=dict)
     confirmation_token: str | None = None
+
+
+class DeepSearchToggleRequest(BaseModel):
+    enabled: bool

@@ -1,4 +1,15 @@
-## v1.4.6
+# CHANGELOG
+
+## v1.5.0 — Deep Search Engine
+- Deep Search global ON/OFF com persistência em `system_settings`.
+- Pesquisa em múltiplas consultas derivadas.
+- Busca web estruturada e recuperação das páginas das fontes.
+- Até 4 fontes são passadas ao Cortex como contexto de pesquisa.
+- Fontes recuperadas são exibidas na interface.
+- Auditoria das execuções em `deep_search_runs`.
+- Deep Search permanece desligado por padrão.
+
+v1.5.0
 
 - Corrigida a camada visual da aba Memória: o drawer agora fica acima do backdrop e recebe cliques/rolagem normalmente.
 - Ao abrir Memória, o Histórico é fechado para evitar sobreposição de overlays.

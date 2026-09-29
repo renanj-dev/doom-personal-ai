@@ -10,17 +10,18 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest)
+from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
 from .memory_engine import (backfill_legacy_conversations, delete_conversation, get_messages, get_or_create_conversation, list_conversations, new_session_id, search_history, touch_conversation, detect_memory_intent, extract_memory_content, infer_memory_category, create_memory_proposal, get_pending_proposal, resolve_memory_proposal, cancel_memory_proposal, relevant_memories, AFFIRMATIVE_MEMORY, NEGATIVE_MEMORY)
 from .context_engine import build_context
 from .tools import TOOL_ENGINE
+from .deep_search import DEEP_SEARCH_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.4.6")
+app = FastAPI(title="Doom Personal AI", version="1.5.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -45,6 +46,27 @@ def startup() -> None:
         seed_memories()
 
 
+
+
+def get_global_deep_search_enabled(db: Session) -> bool:
+    row = db.scalar(select(SystemSetting).where(SystemSetting.key == "deep_search_enabled"))
+    if row is None:
+        return bool(settings.deep_search_enabled)
+    return row.value.strip().lower() == "true"
+
+
+def set_global_deep_search_enabled(db: Session, enabled: bool) -> None:
+    row = db.scalar(select(SystemSetting).where(SystemSetting.key == "deep_search_enabled"))
+    if row is None:
+        row = SystemSetting(key="deep_search_enabled", value="true" if enabled else "false")
+        db.add(row)
+    else:
+        row.value = "true" if enabled else "false"
+    from datetime import datetime, timezone
+    row.updated_at = datetime.now(timezone.utc)
+    db.commit()
+
+
 def auth(x_doom_key: Annotated[str | None, Header()] = None) -> None:
     if not x_doom_key or x_doom_key != settings.doom_api_key:
         raise HTTPException(status_code=401, detail="Chave Doom inválida.")
@@ -63,6 +85,38 @@ def cortex_status() -> dict:
         "primary": providers[0] if providers else None,
         "models": {p: provider_model(p) for p in providers},
     }
+
+
+
+
+@app.get("/api/deep-search", dependencies=[Depends(auth)])
+def deep_search_status(db: Session = Depends(get_db)) -> dict:
+    return {
+        "enabled": get_global_deep_search_enabled(db),
+        "available": DEEP_SEARCH_ENGINE.available(),
+        "provider": settings.deep_search_provider,
+        "detail": DEEP_SEARCH_ENGINE.availability_detail(),
+        "max_sources": settings.deep_search_max_sources,
+    }
+
+
+@app.patch("/api/deep-search", dependencies=[Depends(auth)])
+def toggle_deep_search(payload: DeepSearchToggleRequest, db: Session = Depends(get_db)) -> dict:
+    if payload.enabled and not DEEP_SEARCH_ENGINE.available():
+        raise HTTPException(status_code=503, detail=DEEP_SEARCH_ENGINE.availability_detail())
+    set_global_deep_search_enabled(db, payload.enabled)
+    return deep_search_status(db)
+
+
+@app.get("/api/deep-search/runs", dependencies=[Depends(auth)])
+def deep_search_runs(limit: int = 20, db: Session = Depends(get_db)) -> list[dict]:
+    limit = max(1, min(limit, 100))
+    rows = db.scalars(select(DeepSearchRun).order_by(DeepSearchRun.created_at.desc()).limit(limit)).all()
+    return [{
+        "id": row.id, "session_id": row.session_id, "query": row.query, "provider": row.provider,
+        "status": row.status, "query_count": row.query_count, "source_count": row.source_count,
+        "duration_ms": row.duration_ms, "created_at": row.created_at, "error": row.error,
+    } for row in rows]
 
 
 @app.get("/api/context/preview", dependencies=[Depends(auth)])
@@ -294,6 +348,8 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     mode = infer_mode(payload.message)
     route = None
     context_bundle = None
+    deep_search_used = False
+    deep_search_result = None
     try:
         context_bundle = build_context(db, payload.session_id, payload.message)
         recent = recent_db
@@ -344,12 +400,16 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
                         continue
                     seen_pairs.add(pair)
                     compact_messages.append(item)
+                deep_search_used = get_global_deep_search_enabled(db) if payload.deep_search is None else payload.deep_search
+                if deep_search_used:
+                    deep_search_result = DEEP_SEARCH_ENGINE.research(payload.message, payload.session_id)
                 reply, route = ask_with_cortex(
                     memory_text=context_bundle.memory_text,
                     recent_messages=compact_messages,
                     user_message=payload.message,
                     profile_text=context_bundle.profile_text,
                     session_id=payload.session_id,
+                    research_text=deep_search_result.context if deep_search_result else None,
                 )
     except Exception as exc:
         # Remove the just-added user message only when the provider fails, so a retry is clean.
@@ -363,7 +423,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     return ChatResponse(
         session_id=payload.session_id,
         reply=reply,
-        mode="success" if mode == "thinking" else mode,
+        mode="success" if mode == "thinking" else ("deep_search" if deep_search_used else mode),
         brain=(route.provider if route else "doom-core"),
         model=(route.model if route else None),
         task=(route.task if route else "memory"),
@@ -372,4 +432,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         context_recent=(context_bundle.recent_count if context_bundle and route else 0),
         context_recalled=(context_bundle.recalled_count if context_bundle and route else 0),
         memories_used=(context_bundle.memory_count if context_bundle and route else 0),
+        deep_search=deep_search_used,
+        deep_search_query=deep_search_result.query if deep_search_result else None,
+        deep_search_sources=[DeepSearchSourceOut(title=x.title, url=x.url, snippet=x.snippet) for x in (deep_search_result.sources if deep_search_result else ())],
     )

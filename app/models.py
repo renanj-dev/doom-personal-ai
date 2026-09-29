@@ -88,3 +88,25 @@ class ToolAuditRecord(Base):
     permission: Mapped[str] = mapped_column(String(16), index=True)
     ok: Mapped[bool] = mapped_column(Boolean, default=False)
     detail: Mapped[str] = mapped_column(Text, default="")
+
+
+class SystemSetting(Base):
+    __tablename__ = "system_settings"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    value: Mapped[str] = mapped_column(Text, default="")
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DeepSearchRun(Base):
+    __tablename__ = "deep_search_runs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    query: Mapped[str] = mapped_column(Text)
+    provider: Mapped[str] = mapped_column(String(32), default="brave")
+    status: Mapped[str] = mapped_column(String(32), default="completed", index=True)
+    query_count: Mapped[int] = mapped_column(Integer, default=0)
+    source_count: Mapped[int] = mapped_column(Integer, default=0)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    error: Mapped[str] = mapped_column(Text, default="")

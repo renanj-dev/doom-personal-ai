@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     # Seed the curated initial memory on startup when set to true.
     seed_memories: bool = False
 
+    # Doom Deep Search v1.5. Global default can be overridden per chat request.
+    deep_search_enabled: bool = False
+    deep_search_provider: str = "brave"
+    brave_search_api_key: str | None = None
+    deep_search_country: str = "BR"
+    deep_search_lang: str = "pt-br"
+    deep_search_max_results: int = 6
+    deep_search_max_sources: int = 4
+    deep_search_max_queries: int = 4
+    deep_search_fetch_timeout: float = 12.0
+    deep_search_max_page_chars: int = 12000
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
 
     @property

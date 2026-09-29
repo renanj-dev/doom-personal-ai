@@ -1,5 +1,6 @@
-// Doom Context Engine v1.3 — relevant context and recall
-const DOOM_MEMORY_ENGINE = { version: '1.4.6' };
+// Doom State / UI v1.5.0 — Context, Memory and Deep Search
+const DOOM_MEMORY_ENGINE = { version: '1.5.0' };
+const DOOM_DEEP_SEARCH = { enabled: false, available: false };
 
 
 window.DOOM_CODEX={
@@ -15,7 +16,8 @@ window.DOOM_CODEX={
  memory:{label:'MEMÓRIA',className:'state-memory',rune:10},
  study:{label:'ESTUDO',className:'state-study',rune:11},
  offline:{label:'OFFLINE',className:'state-offline',rune:12},
- speculation:{label:'ESPECULAÇÃO',className:'state-speculation',rune:13}
+ speculation:{label:'ESPECULAÇÃO',className:'state-speculation',rune:13},
+ deep_search:{label:'DEEP SEARCH',className:'state-deep-search',rune:6}
 };
 
 const $=s=>document.querySelector(s);
@@ -26,9 +28,9 @@ function setTheme(theme){root.dataset.theme=theme;localStorage.setItem('doom_the
 setTheme(localStorage.getItem('doom_theme')||'dark');
 $('#themeBtn').onclick=()=>setTheme(root.dataset.theme==='dark'?'light':'dark');
 function setState(name){const s=window.DOOM_CODEX[name]||window.DOOM_CODEX.online;Object.values(window.DOOM_CODEX).forEach(x=>shell.classList.remove(x.className));shell.classList.add(s.className);stateLabel.textContent=s.label;$('#systemState').textContent=s.label;stateDot.className='doom-dot';modeNote.textContent=s.label;document.querySelectorAll('.doom-rune').forEach((el,i)=>el.classList.toggle('active',i+1===s.rune));}
-function inferLocalState(text){const t=(text||'').toLowerCase();if(/(erro|falha|não funciona|problema)/.test(t))return'error';if(/(quem sou eu|o que você sabe sobre mim|o que sabe sobre mim|memória|lembra|lembrar|esquecer)/.test(t))return'memory';if(/(estud|aprender|exercício|matemática|enem|aula)/.test(t))return'study';if(/(analise|análise|possibil|compare|cenário|hipótese)/.test(t))return'analysis';if(/(crie|criar|escreva|desenhe|ideia|projeto)/.test(t))return'creation';if(/(execute|executar|abra|rodar|rode|faça isso)/.test(t))return'execution';if(/(talvez|especul|e se|hipotetic)/.test(t))return'speculation';return'thinking';}
+function inferLocalState(text){const t=(text||'').toLowerCase();if(/(erro|falha|não funciona|problema)/.test(t))return'error';if(/(quem sou eu|o que você sabe sobre mim|o que sabe sobre mim|memória|lembra|lembrar|esquecer)/.test(t))return'memory';if(/(estud|aprender|exercício|matemática|enem|aula)/.test(t))return'study';if(/(analise|análise|possibil|compare|cenário|hipótese)/.test(t))return'analysis';if(/(crie|criar|escreva|desenhe|ideia|projeto)/.test(t))return'creation';if(/(execute|executar|abra|rodar|rode|faça isso)/.test(t))return'execution';if(/(deep search|pesquisa profunda|pesquise profundamente|pesquisa aprofundada)/.test(t))return'deep_search';if(/(talvez|especul|e se|hipotetic)/.test(t))return'speculation';return'thinking';}
 function addMessage(role,text){if(msgs.querySelector('.doom-empty'))msgs.innerHTML='';const row=document.createElement('div');row.className=`doom-msg ${role}`;const bubble=document.createElement('div');bubble.className='doom-bubble';bubble.textContent=text;row.appendChild(bubble);msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;}
-$('#saveKey').onclick=()=>{localStorage.setItem('doom_key',key.value.trim());refreshHistory();setState('success');setTimeout(()=>setState('online'),900);};
+$('#saveKey').onclick=()=>{localStorage.setItem('doom_key',key.value.trim());refreshHistory();refreshDeepSearch();setState('success');setTimeout(()=>setState('online'),900);};
 async function health(){try{const r=await fetch('/health');const d=await r.json();engineValue.textContent='CORTEX';engineNote&&(engineNote.textContent=`${d.name} v${d.version}`);$('#linkValue').textContent='ONLINE';setState('online');}catch{engineValue.textContent='indisponível';$('#linkValue').textContent='OFFLINE';setState('offline');}}
 form.onsubmit=async e=>{e.preventDefault();const text=input.value.trim();if(!text)return;if(!key.value.trim())return alert('Digite sua Chave Doom primeiro.');addMessage('user',text);input.value='';send.disabled=true;setState(inferLocalState(text));try{const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json','X-Doom-Key':key.value.trim()},body:JSON.stringify({session_id:currentSessionId(),message:text})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Erro');addMessage('doom',d.reply);if(engineValue)engineValue.textContent=d.brain?d.brain.toUpperCase():'CORTEX';if(engineNote)engineNote.textContent=d.model?(d.model+(d.fallback_count?` · fallback ${d.fallback_count}`:'')):'Roteamento automático.';if(contextValue)contextValue.textContent=d.memories_used||d.context_recent||d.context_recalled?'ATIVO':'CORE';if(contextNote)contextNote.textContent=d.context_strategy?`Recentes ${d.context_recent} · lembranças ${d.context_recalled} · memórias ${d.memories_used}`:'Contexto do Core.';setState(d.mode||'success');refreshHistory();setTimeout(()=>setState('online'),1700);}catch(err){addMessage('doom','Não consegui concluir a solicitação: '+err.message);setState('error');}finally{send.disabled=false;input.focus();}};
 
@@ -46,10 +48,14 @@ async function deleteConversationManual(sid){const k=key.value.trim();if(!k||!co
 async function searchHistory(){const k=key.value.trim();const q=($('#historySearch')?.value||'').trim();if(!k||!q){return refreshHistory();}try{const r=await fetch(`/api/history/search?q=${encodeURIComponent(q)}`,{headers:{'X-Doom-Key':k}});if(!r.ok)throw new Error();const rows=await r.json();const grouped={};for(const m of rows){if(!grouped[m.session_id])grouped[m.session_id]={session_id:m.session_id,title:'Conversa '+m.session_id.slice(0,6),updated_at:m.created_at,message_count:0};grouped[m.session_id].message_count++;}renderHistory(Object.values(grouped));}catch{if($('#historyList'))$('#historyList').innerHTML='<div class="doom-history-empty">Falha na busca.</div>';}}
 $('#historyBtn')?.addEventListener('click',openHistory);$('#historyClose')?.addEventListener('click',closeHistory);$('#historyBackdrop')?.addEventListener('click',closeHistory);$('#newConversation')?.addEventListener('click',newConversation);$('#historySearch')?.addEventListener('input',()=>{clearTimeout(window.__doomHistoryTimer);window.__doomHistoryTimer=setTimeout(searchHistory,250);});
 
-health().then(loadCurrentConversation);
+health().then(loadCurrentConversation).then(refreshDeepSearch);
 
 
-// Doom Memory Intelligence v1.3
+async function refreshDeepSearch(){const k=key.value.trim();if(!k)return;try{const r=await fetch('/api/deep-search',{headers:{'X-Doom-Key':k}});if(!r.ok)throw new Error();const d=await r.json();DOOM_DEEP_SEARCH.enabled=!!d.enabled;DOOM_DEEP_SEARCH.available=!!d.available;const btn=$('#deepSearchBtn');const value=$('#deepSearchValue');const note=$('#deepSearchNote');const searchValue=$('#searchValue');const searchNote=$('#searchNote');if(btn){btn.classList.toggle('doom-deep-on',d.enabled);btn.textContent=d.enabled?'⌕✓':'⌕';btn.title=d.enabled?'Deep Search ativado':'Deep Search desativado';}if(value)value.textContent=d.enabled?'ATIVADO':'DESATIVADO';if(note)note.textContent=d.available?'Pesquisa profunda sob demanda.':d.detail;if(searchValue)searchValue.textContent=d.enabled?'ON':'OFF';if(searchNote)searchNote.textContent=d.available?'Deep Search disponível.':d.detail;}catch{}}
+async function toggleDeepSearch(){const k=key.value.trim();if(!k)return alert('Digite sua Chave Doom primeiro.');const next=!DOOM_DEEP_SEARCH.enabled;try{const r=await fetch('/api/deep-search',{method:'PATCH',headers:{'Content-Type':'application/json','X-Doom-Key':k},body:JSON.stringify({enabled:next})});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Não foi possível alterar o Deep Search.');DOOM_DEEP_SEARCH.enabled=d.enabled;setState(d.enabled?'deep_search':'success');await refreshDeepSearch();setTimeout(()=>setState('online'),900);}catch(e){setState('error');addMessage('doom','Não consegui alterar o Deep Search: '+e.message);}}
+$('#deepSearchBtn')?.addEventListener('click',toggleDeepSearch);
+
+// Doom Memory Intelligence + Deep Search UI
 function openMemory(){const d=$('#memoryDrawer');const b=$('#historyBackdrop');if(!d||!b)return;closeHistory();d.classList.add('open');b.classList.add('open');d.setAttribute('aria-hidden','false');refreshMemories();}
 function closeMemory(){const d=$('#memoryDrawer');const b=$('#historyBackdrop');if(!d||!b)return;d.classList.remove('open');b.classList.remove('open');d.setAttribute('aria-hidden','true');}
 async function refreshMemories(){const k=key.value.trim();if(!k)return;const q=($('#memorySearch')?.value||'').trim();try{const url=q?`/api/memories/search?q=${encodeURIComponent(q)}`:'/api/memories';const r=await fetch(url,{headers:{'X-Doom-Key':k}});if(!r.ok)throw new Error();const rows=await r.json();renderMemories(rows);}catch{if($('#memoryList'))$('#memoryList').innerHTML='<div class="doom-history-empty">Falha ao carregar a memória.</div>';}}

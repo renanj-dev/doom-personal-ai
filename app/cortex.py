@@ -49,14 +49,14 @@ def _tool_context_messages(memory_text, recent_messages, profile_text, provider,
     messages.append({"role":"user","content":"DOOM_TOOL_RESULT\nO Tool Engine executou a ferramenta solicitada. Use somente este resultado para responder ao usuário:\n"+__import__('json').dumps(result,ensure_ascii=False)})
     return messages
 
-def ask_with_cortex(memory_text:str,recent_messages:list[dict],user_message:str,profile_text:str|None=None,session_id:str='main')->tuple[str,CortexRoute]:
+def ask_with_cortex(memory_text:str,recent_messages:list[dict],user_message:str,profile_text:str|None=None,session_id:str='main',research_text:str|None=None)->tuple[str,CortexRoute]:
     task,candidates,reason=route_task(user_message)
     if not candidates: raise RuntimeError("O Cortex não encontrou nenhum cérebro configurado e disponível.")
     errors=[]
     for index,provider in enumerate(candidates):
         try:
             messages=list(recent_messages)
-            reply=ask_doom(memory_text,messages,provider=provider,profile_text=profile_text)
+            reply=ask_doom(memory_text,messages,provider=provider,profile_text=profile_text,research_text=research_text)
             for _ in range(2):
                 request=TOOL_ENGINE.parse_request(reply)
                 if not request: break
@@ -70,7 +70,7 @@ def ask_with_cortex(memory_text:str,recent_messages:list[dict],user_message:str,
                     reply=result.get('error') or 'A ferramenta não pôde ser executada.'
                     break
                 messages=_tool_context_messages(memory_text,messages,profile_text,provider,reply,result)
-                reply=ask_doom(memory_text,messages,provider=provider,profile_text=profile_text)
+                reply=ask_doom(memory_text,messages,provider=provider,profile_text=profile_text,research_text=research_text)
             return reply,CortexRoute(task,TASK_LABELS.get(task,task.upper()),provider,provider_model(provider),index,reason)
         except Exception as exc:
             errors.append(f"{provider}: {exc}")

@@ -1,4 +1,4 @@
-# Doom Personal AI v1.4.5
+# Doom Personal AI v1.5.0
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -73,3 +73,7 @@ The v1.4.5 release consolidates tools, permissions, audit, manual history deleti
 
 ### v1.4.5 — DB migration hotfix
 Compatibilidade com bancos existentes da v1.3: o startup aplica as mudanças aditivas necessárias na tabela `memories` antes das consultas da Memory Engine.
+
+
+## Doom v1.5 — Deep Search
+Deep Search é um modo opcional, desligado por padrão. Quando ativado, o Core executa pesquisas em múltiplas consultas, recupera fontes e entrega o material ao Cortex para síntese. As fontes recuperadas também aparecem na interface.
