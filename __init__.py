@@ -1,3 +1,31 @@
-from .audit_store import AuditSink, Base, ToolAuditRecord, ToolAuditStore
+"""Doom v1.4.3 security package."""
 
-__all__ = ["AuditSink", "Base", "ToolAuditRecord", "ToolAuditStore"]
+from .security_permissions import (
+    Base,
+    ConfirmationResult,
+    ConfirmationStatus,
+    Decision,
+    PermissionDecision,
+    PermissionEngine,
+    PermissionMode,
+    PermissionScope,
+    PermissionStore,
+    SecureToolGate,
+    ToolConfirmation,
+    ToolPermission,
+)
+
+__all__ = [
+    "Base",
+    "ConfirmationResult",
+    "ConfirmationStatus",
+    "Decision",
+    "PermissionDecision",
+    "PermissionEngine",
+    "PermissionMode",
+    "PermissionScope",
+    "PermissionStore",
+    "SecureToolGate",
+    "ToolConfirmation",
+    "ToolPermission",
+]

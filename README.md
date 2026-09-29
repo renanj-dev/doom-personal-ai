@@ -1,40 +1,30 @@
-# Doom v1.4.2 — Persistent Tool Audit
+# Doom v1.4.3
 
-This step adds persistent storage for Tool Engine audit events.
+Security & Permissions Engine for the Doom Tool stack.
 
-## Architecture
+## Files
 
-```text
-Doom Cortex
-    ↓
-Tool Engine
-    ↓
-AuditEvent
-    ↓
-AuditSink
-    ↓
-PostgreSQL / SQLite
-    ↓
-tool_audit_log
+- `security_permissions.py` — persistence, policy resolution, confirmation tokens and secure gate.
+- `security_audit_bridge.py` — adapter for the v1.4.2 AuditSink.
+- `test_security_permissions.py` — unit tests.
+- `DOOM_SECURITY.md` — architecture and integration notes.
+
+## Validation
+
+Run:
+
+```bash
+python -m unittest -v test_security_permissions.py
 ```
 
-Each event records timestamp, session, tool, action, permission, success/failure and a detail field.
+Expected result: **7 tests passing**.
 
-## Local
+## Integration point
 
-```python
-from audit_store import ToolAuditStore
+Before the existing Tool Engine executes a tool, call `SecureToolGate.authorize(...)`.
+Only execute when `allowed == true`.
 
-store = ToolAuditStore("sqlite:///./data/doom.db")
-store.init()
-```
+For a `confirm` decision, return the confirmation request to the UI, then call
+`authorize(...)` again with the same tool arguments and the user's confirmation token.
 
-## Cloud
-
-Use the same PostgreSQL `DATABASE_URL` already used by the Doom server.
-
-## Integration
-
-The `AuditSink` can receive the existing `AuditEvent` objects from the Tool Engine. The storage layer is intentionally independent of FastAPI and of the AI provider.
-
-No shell/code execution or new privileged tools are introduced by this step.
+No arbitrary execution capabilities are introduced by this version.
