@@ -1,10 +1,11 @@
 # Changelog
 
-## v1.4.0 — Doom Tool Engine
+## v1.4.1 — Cortex Tool Bridge
 
-- Added modular tool registry.
-- Added SAFE / CONFIRM / BLOCKED permission classes.
-- Added confirmation tokens bound to session, tool and exact arguments.
-- Added audit events for tool requests and executions.
-- Added safe calculator, current time and system information tools.
-- Deliberately excluded arbitrary shell/code execution.
+- adicionada ponte entre Cortex e Tool Engine;
+- protocolo JSON estrito para chamadas de ferramentas;
+- catálogo de ferramentas para o prompt;
+- retorno estruturado de resultados;
+- fluxo de confirmação preservado;
+- loop máximo de execuções por solicitação;
+- testes automatizados para integração.
