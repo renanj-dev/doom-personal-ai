@@ -1,30 +1,17 @@
-# Doom v1.4.3
+# Doom v1.4.4
 
-Security & Permissions Engine for the Doom Tool stack.
+**History & Memory Management Engine**
 
-## Files
+Pacote modular para integrar ao Doom existente:
 
-- `security_permissions.py` — persistence, policy resolution, confirmation tokens and secure gate.
-- `security_audit_bridge.py` — adapter for the v1.4.2 AuditSink.
-- `test_security_permissions.py` — unit tests.
-- `DOOM_SECURITY.md` — architecture and integration notes.
+- `memory_history_engine.py` — persistência e regras de negócio;
+- `router.py` — endpoints FastAPI opcionais;
+- `test_memory_history.py` — suíte de validação;
+- `DOOM_V1_4_4.md` — arquitetura e instruções.
 
-## Validation
-
-Run:
+## Validação
 
 ```bash
-python -m unittest -v test_security_permissions.py
+python -m unittest -v test_memory_history.py
+python -m compileall -q .
 ```
-
-Expected result: **7 tests passing**.
-
-## Integration point
-
-Before the existing Tool Engine executes a tool, call `SecureToolGate.authorize(...)`.
-Only execute when `allowed == true`.
-
-For a `confirm` decision, return the confirmation request to the UI, then call
-`authorize(...)` again with the same tool arguments and the user's confirmation token.
-
-No arbitrary execution capabilities are introduced by this version.
