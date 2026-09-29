@@ -1,13 +1,10 @@
 # Changelog
 
-## v1.3.0 — Doom Context Engine
+## v1.4.0 — Doom Tool Engine
 
-- Added a dedicated Context Engine between Memory and Cortex.
-- Uses 12 recent messages plus up to 8 relevant recalled messages.
-- Supports cross-conversation lexical recall in the first semantic layer.
-- Uses up to 8 relevant persistent memories.
-- Uses a focused user profile for normal requests to reduce unnecessary context.
-- Added context telemetry to chat responses and the Command Center.
-- Added authenticated `/api/context/preview` for diagnostics.
-- Kept profile/identity questions deterministic to avoid Doom/Renan identity confusion.
-- Updated the project documentation and UI version markers to v1.3.
+- Added modular tool registry.
+- Added SAFE / CONFIRM / BLOCKED permission classes.
+- Added confirmation tokens bound to session, tool and exact arguments.
+- Added audit events for tool requests and executions.
+- Added safe calculator, current time and system information tools.
+- Deliberately excluded arbitrary shell/code execution.
