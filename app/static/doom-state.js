@@ -1,5 +1,5 @@
 // Doom Context Engine v1.3 — relevant context and recall
-const DOOM_MEMORY_ENGINE = { version: '1.4.5' };
+const DOOM_MEMORY_ENGINE = { version: '1.4.6' };
 
 
 window.DOOM_CODEX={
@@ -50,7 +50,7 @@ health().then(loadCurrentConversation);
 
 
 // Doom Memory Intelligence v1.3
-function openMemory(){const d=$('#memoryDrawer');const b=$('#historyBackdrop');if(!d||!b)return;d.classList.add('open');b.classList.add('open');d.setAttribute('aria-hidden','false');refreshMemories();}
+function openMemory(){const d=$('#memoryDrawer');const b=$('#historyBackdrop');if(!d||!b)return;closeHistory();d.classList.add('open');b.classList.add('open');d.setAttribute('aria-hidden','false');refreshMemories();}
 function closeMemory(){const d=$('#memoryDrawer');const b=$('#historyBackdrop');if(!d||!b)return;d.classList.remove('open');b.classList.remove('open');d.setAttribute('aria-hidden','true');}
 async function refreshMemories(){const k=key.value.trim();if(!k)return;const q=($('#memorySearch')?.value||'').trim();try{const url=q?`/api/memories/search?q=${encodeURIComponent(q)}`:'/api/memories';const r=await fetch(url,{headers:{'X-Doom-Key':k}});if(!r.ok)throw new Error();const rows=await r.json();renderMemories(rows);}catch{if($('#memoryList'))$('#memoryList').innerHTML='<div class="doom-history-empty">Falha ao carregar a memória.</div>';}}
 function renderMemories(items){const list=$('#memoryList');if(!list)return;$('#memoryCount').textContent=`${items.length} ${items.length===1?'memória ativa':'memórias ativas'}`;if(!items.length){list.innerHTML='<div class="doom-history-empty">Nenhuma memória encontrada.</div>';return;}list.innerHTML=items.map(m=>`<div class="doom-memory-item"><div class="doom-history-title">${escapeHtml(m.category.replaceAll('_',' '))}</div><div class="doom-memory-content">${escapeHtml(m.content)}</div><div class="doom-history-meta"><span>rev. ${m.revision||1} · ${formatHistoryDate(m.updated_at||m.created_at)}</span><span><button class="doom-mini-btn" data-edit-memory="${m.id}" type="button">Editar</button> <button class="doom-mini-btn danger" data-memory="${m.id}" type="button">Excluir</button></span></div></div>`).join('');list.querySelectorAll('[data-memory]').forEach(btn=>btn.onclick=()=>deleteMemory(Number(btn.dataset.memory)));list.querySelectorAll('[data-edit-memory]').forEach(btn=>btn.onclick=()=>editMemory(Number(btn.dataset.editMemory),items.find(x=>x.id===Number(btn.dataset.editMemory))));}

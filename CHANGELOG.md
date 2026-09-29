@@ -1,3 +1,8 @@
+## v1.4.6
+
+- Corrigida a camada visual da aba Memória: o drawer agora fica acima do backdrop e recebe cliques/rolagem normalmente.
+- Ao abrir Memória, o Histórico é fechado para evitar sobreposição de overlays.
+
 # Changelog
 
 ## 1.4.5

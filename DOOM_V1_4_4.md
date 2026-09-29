@@ -1,3 +1,7 @@
+### Hotfix v1.4.6
+
+Correção de interação da interface da aba Memória (z-index/backdrop) e sincronização de versão.
+
 # Doom v1.4.5 — Core Integration
 
 Esta é a atualização consolidada sobre o **Doom Cloud v1.3 enviado por Renan**.
