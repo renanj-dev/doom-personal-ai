@@ -1,67 +1,40 @@
-# Doom v1.4 — Cortex ↔ Tool Engine Integration
+# Doom v1.4.2 — Persistent Tool Audit
 
-Esta etapa conecta o **Doom Cortex** ao **Tool Engine** por uma fronteira estruturada e auditável.
+This step adds persistent storage for Tool Engine audit events.
 
-## Fluxo
+## Architecture
 
 ```text
-Usuário
-  ↓
-Cortex / Provider
-  ↓
-JSON estrito de tool request
-  ↓
-CortexToolBridge
-  ↓
+Doom Cortex
+    ↓
 Tool Engine
-  ├─ SAFE → executa
-  ├─ CONFIRM → gera token e para
-  └─ BLOCKED → recusa
-  ↓
-ToolResult
-  ↓
-Cortex recebe DOOM_TOOL_RESULT
-  ↓
-Resposta final ao usuário
+    ↓
+AuditEvent
+    ↓
+AuditSink
+    ↓
+PostgreSQL / SQLite
+    ↓
+tool_audit_log
 ```
 
-## O que esta implementação resolve
+Each event records timestamp, session, tool, action, permission, success/failure and a detail field.
 
-- Catálogo de ferramentas injetável no prompt do Cortex.
-- Parser estrito: o modelo precisa produzir apenas o objeto JSON da chamada.
-- Execução delegada exclusivamente ao `ToolEngine`.
-- Ferramentas `confirm` interrompem o loop e exigem confirmação explícita.
-- Resultado da ferramenta volta ao Cortex em mensagem estruturada.
-- Loop limitado para impedir chamadas infinitas.
-- Integração independente do provider (Ollama, OpenRouter, OpenAI etc.).
+## Local
 
-## Contrato do Cortex
+```python
+from audit_store import ToolAuditStore
 
-Pedido:
-
-```json
-{"tool":"calculator","args":{"expression":"(12+8)*3"}}
+store = ToolAuditStore("sqlite:///./data/doom.db")
+store.init()
 ```
 
-Resultado interno:
+## Cloud
 
-```text
-DOOM_TOOL_RESULT
-{"tool":"calculator","ok":true,"data":{"expression":"(12+8)*3","result":60},"error":null}
-```
+Use the same PostgreSQL `DATABASE_URL` already used by the Doom server.
 
-Quando não precisa de ferramenta, o Cortex responde normalmente em texto.
+## Integration
 
-## Integração no projeto real
+The `AuditSink` can receive the existing `AuditEvent` objects from the Tool Engine. The storage layer is intentionally independent of FastAPI and of the AI provider.
 
-O arquivo `cortex_bridge.py` foi feito como adaptador para não depender da estrutura exata da v1.3. A conexão com o seu `Cortex` atual consiste em:
-
-1. criar um `ToolEngine` compartilhado por processo;
-2. criar `CortexToolBridge(engine)`;
-3. acrescentar `bridge.build_system_addendum()` às instruções do Cortex;
-4. depois da resposta do provider, passar o texto por `bridge.handle_model_output(...)` ou usar `bridge.run_loop(...)` no ponto central do chat;
-5. persistir os `AuditEvent` no banco na próxima subetapa.
-
-## Limites de segurança mantidos
-
-A integração não adiciona `subprocess`, shell, PowerShell, `eval`, execução de código arbitrário ou acesso irrestrito ao sistema de arquivos.
+No shell/code execution or new privileged tools are introduced by this step.
