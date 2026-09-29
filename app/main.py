@@ -10,15 +10,15 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import Conversation, Message, Memory
+from .models import Conversation, Message, Memory, MemoryProposal
 from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
-from .memory_engine import backfill_legacy_conversations, delete_conversation, get_messages, get_or_create_conversation, list_conversations, new_session_id, search_history, touch_conversation
+from .memory_engine import (backfill_legacy_conversations, delete_conversation, get_messages, get_or_create_conversation, list_conversations, new_session_id, search_history, touch_conversation, detect_memory_intent, extract_memory_content, infer_memory_category, create_memory_proposal, get_pending_proposal, resolve_memory_proposal, cancel_memory_proposal, relevant_memories, AFFIRMATIVE_MEMORY, NEGATIVE_MEMORY)
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.1.0")
+app = FastAPI(title="Doom Personal AI", version="1.2.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -93,6 +93,42 @@ def delete_memory(memory_id: int, db: Session = Depends(get_db)):
     row.active = False
     db.commit()
     return {"ok": True}
+
+
+@app.get("/api/memory/pending/{session_id}", response_model=MemoryProposalOut | None, dependencies=[Depends(auth)])
+def pending_memory(session_id: str, db: Session = Depends(get_db)):
+    return get_pending_proposal(db, session_id)
+
+
+@app.post("/api/memory/propose", response_model=MemoryProposalOut, dependencies=[Depends(auth)])
+def propose_memory(session_id: str, content: str, db: Session = Depends(get_db)):
+    proposal = create_memory_proposal(db, session_id, content, infer_memory_category(content))
+    return proposal
+
+
+@app.post("/api/memory/proposals/{proposal_id}/approve", response_model=MemoryOut, dependencies=[Depends(auth)])
+def approve_memory(proposal_id: int, db: Session = Depends(get_db)):
+    proposal = db.get(MemoryProposal, proposal_id)
+    if not proposal or proposal.status != "pending":
+        raise HTTPException(status_code=404, detail="Proposta de memória não encontrada ou já resolvida.")
+    try:
+        return resolve_memory_proposal(db, proposal, True)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/memory/proposals/{proposal_id}/reject", dependencies=[Depends(auth)])
+def reject_memory(proposal_id: int, db: Session = Depends(get_db)):
+    proposal = db.get(MemoryProposal, proposal_id)
+    if not proposal or proposal.status != "pending":
+        raise HTTPException(status_code=404, detail="Proposta de memória não encontrada ou já resolvida.")
+    cancel_memory_proposal(db, proposal)
+    return {"ok": True, "proposal_id": proposal_id}
+
+
+@app.get("/api/memories/search", response_model=list[MemoryOut], dependencies=[Depends(auth)])
+def search_memories(q: str, db: Session = Depends(get_db)):
+    return relevant_memories(db, q, limit=20)
 
 
 @app.get("/api/conversations", response_model=list[ConversationOut], dependencies=[Depends(auth)])
@@ -196,29 +232,46 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
     ).all()
     recent.reverse()
 
-    memories = db.scalars(
-        select(Memory)
-        .where(Memory.active.is_(True))
-        .order_by(Memory.created_at.desc())
-        .limit(50)
-    ).all()
-    memory_text = "\n".join(f"[{m.category}] {m.content}" for m in memories)
-
     mode = infer_mode(payload.message)
     route = None
     try:
         recent_payload = [{"role": m.role, "content": m.content} for m in recent]
-        if is_profile_query(payload.message):
-            profile_rows = [(m.category, m.content) for m in memories]
+        active_memories = relevant_memories(db, payload.message, limit=10)
+        memory_text = "\n".join(f"[{m.category}] {m.content}" for m in active_memories)
+        pending = get_pending_proposal(db, payload.session_id)
+        normalized = payload.message.strip().lower()
+
+        if pending and normalized in AFFIRMATIVE_MEMORY:
+            row = resolve_memory_proposal(db, pending, True)
+            reply = f"Entendido. Registrei essa informação na minha memória, em {row.category}."
+            mode = "memory"
+        elif pending and normalized in NEGATIVE_MEMORY:
+            cancel_memory_proposal(db, pending)
+            reply = "Entendido. Não vou registrar essa informação."
+            mode = "memory"
+        elif detect_memory_intent(payload.message):
+            content = extract_memory_content(payload.message)
+            if not content:
+                raise RuntimeError("Não consegui identificar o conteúdo que deveria ser memorizado.")
+            proposal = create_memory_proposal(db, payload.session_id, content, infer_memory_category(content))
+            reply = (
+                f"Entendido. Posso registrar isto na minha memória como {proposal.category}:\n\n"
+                f'“{proposal.content}”\n\n'
+                "Deseja que eu memorize permanentemente? Responda 'sim' ou 'não'."
+            )
+            mode = "memory"
+        elif is_profile_query(payload.message):
+            all_memories = db.scalars(select(Memory).where(Memory.active.is_(True)).order_by(Memory.created_at.desc())).all()
+            profile_rows = [(m.category, m.content) for m in all_memories]
             reply = build_user_profile(profile_rows, settings.doom_user_name)
             mode = "memory"
         else:
-            # A short affirmative follow-up can mean "continue the profile".
             recent_user_texts = [m.content.strip().lower() for m in recent if m.role == "user"]
             followups = {"por favor", "sim", "continue", "continue, por favor", "pode", "pode sim", "claro"}
             prior_profile = any(is_profile_query(t) for t in recent_user_texts[:-1])
-            if payload.message.strip().lower() in followups and prior_profile:
-                profile_rows = [(m.category, m.content) for m in memories]
+            if normalized in followups and prior_profile:
+                all_memories = db.scalars(select(Memory).where(Memory.active.is_(True)).order_by(Memory.created_at.desc())).all()
+                profile_rows = [(m.category, m.content) for m in all_memories]
                 reply = build_user_profile(profile_rows, settings.doom_user_name)
                 mode = "memory"
             else:

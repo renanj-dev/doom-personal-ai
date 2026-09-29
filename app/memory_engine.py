@@ -111,3 +111,139 @@ def backfill_legacy_conversations(db: Session) -> int:
     if created:
         db.commit()
     return created
+
+
+# ---- Doom Memory Intelligence v1.2 ----
+import re
+from datetime import datetime, timezone
+from sqlalchemy import desc
+from .models import Memory, MemoryProposal
+
+STOPWORDS = {
+    "a", "o", "e", "de", "do", "da", "dos", "das", "um", "uma", "uns", "umas",
+    "que", "para", "por", "em", "no", "na", "nos", "nas", "com", "sem", "sobre",
+    "como", "eu", "me", "meu", "minha", "meus", "minhas", "você", "voce", "seu", "sua",
+    "seus", "suas", "isso", "esse", "essa", "estes", "estas", "é", "e", "ser", "ter",
+    "tem", "tenho", "que", "mais", "muito", "muita", "uma", "também", "tambem",
+}
+
+MEMORY_TRIGGER_PATTERNS = (
+    r"\blembre(?:-se)?\s+(?:que|disso)\b",
+    r"\b(?:guarde|guardar|memorize|memorizar|registre|registrar)\s+(?:que|isso|esta informa[cç][aã]o)\b",
+    r"\bquero que (?:voc[eê]|voce) (?:lembre|guarde|memorize|registre)\b",
+    r"\bn[aã]o esque[cç]a\b",
+)
+
+AFFIRMATIVE_MEMORY = {"sim", "pode", "pode sim", "confirma", "confirmo", "sim, pode", "registre", "registra", "lembre", "isso"}
+NEGATIVE_MEMORY = {"não", "nao", "não quero", "nao quero", "cancela", "cancelar", "esquece", "deixa"}
+
+CATEGORY_KEYWORDS = {
+    "projeto_doom": ("doom", "cortex", "memória da doom", "memoria da doom", "layout", "forest core", "app"),
+    "educacao": ("estudo", "enem", "vestibular", "escola", "faculdade"),
+    "aprendizado": ("aprendo", "aprender", "estudar", "explicação", "explicacao", "prefiro"),
+    "tecnologia": ("computador", "pc", "python", "programação", "programacao", "ia", "inteligência artificial", "inteligencia artificial"),
+    "trabalho": ("trabalho", "emprego", "vaga", "empresa"),
+    "habilidades": ("habilidade", "sei fazer", "experiência", "experiencia"),
+    "comunicacao": ("fale comigo", "responda", "tom", "linguagem", "comunicação", "comunicacao"),
+}
+
+def normalize_words(text: str) -> set[str]:
+    words = re.findall(r"[\wÀ-ÿ]{3,}", (text or "").lower())
+    return {w for w in words if w not in STOPWORDS}
+
+
+def detect_memory_intent(message: str) -> bool:
+    text = (message or "").strip().lower()
+    return any(re.search(p, text) for p in MEMORY_TRIGGER_PATTERNS)
+
+
+def extract_memory_content(message: str) -> str:
+    text = " ".join((message or "").strip().split())
+    patterns = [
+        r"^(?:doom,?\s*)?(?:por favor,?\s*)?(?:lembre(?:-se)?|guarde|memorize|registre)\s+que\s+(.+)$",
+        r"^(?:doom,?\s*)?(?:por favor,?\s*)?quero que (?:você|voce) (?:lembre|guarde|memorize|registre)\s+(.+)$",
+        r"^(?:doom,?\s*)?(?:por favor,?\s*)?não esqueça(?: de)?\s+(.+)$",
+    ]
+    for pattern in patterns:
+        m = re.match(pattern, text, flags=re.IGNORECASE)
+        if m:
+            return m.group(1).strip(" .")
+    return text
+
+
+def infer_memory_category(content: str) -> str:
+    t = (content or "").lower()
+    for category, keys in CATEGORY_KEYWORDS.items():
+        if any(k in t for k in keys):
+            return category
+    return "general"
+
+
+def create_memory_proposal(db: Session, session_id: str, content: str, category: str | None = None) -> MemoryProposal:
+    proposal = MemoryProposal(
+        session_id=session_id,
+        category=category or infer_memory_category(content),
+        content=content.strip(),
+        status="pending",
+    )
+    db.add(proposal)
+    db.commit()
+    db.refresh(proposal)
+    return proposal
+
+
+def get_pending_proposal(db: Session, session_id: str) -> MemoryProposal | None:
+    return db.scalar(
+        select(MemoryProposal)
+        .where(MemoryProposal.session_id == session_id, MemoryProposal.status == "pending")
+        .order_by(desc(MemoryProposal.created_at))
+        .limit(1)
+    )
+
+
+def resolve_memory_proposal(db: Session, proposal: MemoryProposal, approved: bool) -> Memory:
+    proposal.status = "approved" if approved else "rejected"
+    proposal.resolved_at = utcnow()
+    if not approved:
+        db.commit()
+        raise ValueError("Memória recusada pelo usuário.")
+    row = Memory(category=proposal.category, content=proposal.content, active=True)
+    db.add(row)
+    db.add(proposal)
+    db.commit()
+    db.refresh(row)
+    return row
+
+
+def cancel_memory_proposal(db: Session, proposal: MemoryProposal) -> None:
+    proposal.status = "rejected"
+    proposal.resolved_at = utcnow()
+    db.commit()
+
+
+def relevant_memories(db: Session, query: str, limit: int = 10) -> list[Memory]:
+    memories = list(db.scalars(select(Memory).where(Memory.active.is_(True))).all())
+    q_words = normalize_words(query)
+    scored: list[tuple[float, Memory]] = []
+    for memory in memories:
+        m_words = normalize_words(memory.content)
+        overlap = len(q_words & m_words)
+        category_bonus = 0.0
+        q = (query or "").lower()
+        if memory.category == infer_memory_category(q) and memory.category != "general":
+            category_bonus = 1.5
+        recency_bonus = 0.1
+        score = overlap * 2.0 + category_bonus + recency_bonus
+        scored.append((score, memory))
+    scored.sort(key=lambda item: (item[0], item[1].created_at), reverse=True)
+    selected = [m for score, m in scored if score > 0][:limit]
+    if len(selected) < min(limit, len(memories)):
+        existing = {m.id for m in selected}
+        newest = sorted(memories, key=lambda m: m.created_at, reverse=True)
+        for m in newest:
+            if m.id not in existing:
+                selected.append(m)
+                existing.add(m.id)
+            if len(selected) >= limit:
+                break
+    return selected

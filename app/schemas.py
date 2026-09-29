@@ -59,3 +59,13 @@ class HistoryMessageOut(BaseModel):
 class ConversationDetailOut(BaseModel):
     conversation: ConversationOut
     messages: list[HistoryMessageOut]
+
+
+class MemoryProposalOut(BaseModel):
+    id: int
+    session_id: str
+    category: str
+    content: str
+    status: str
+    created_at: datetime
+    resolved_at: datetime | None = None

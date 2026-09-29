@@ -1,5 +1,5 @@
 // Doom Memory Engine v1.1 — conversation history
-const DOOM_MEMORY_ENGINE = { version: '1.1.0' };
+const DOOM_MEMORY_ENGINE = { version: '1.2.0' };
 
 
 window.DOOM_CODEX={
@@ -46,3 +46,13 @@ async function searchHistory(){const k=key.value.trim();const q=($('#historySear
 $('#historyBtn')?.addEventListener('click',openHistory);$('#historyClose')?.addEventListener('click',closeHistory);$('#historyBackdrop')?.addEventListener('click',closeHistory);$('#newConversation')?.addEventListener('click',newConversation);$('#historySearch')?.addEventListener('input',()=>{clearTimeout(window.__doomHistoryTimer);window.__doomHistoryTimer=setTimeout(searchHistory,250);});
 
 health().then(loadCurrentConversation);
+
+
+// Doom Memory Intelligence v1.2
+function openMemory(){const d=$('#memoryDrawer');const b=$('#historyBackdrop');if(!d||!b)return;d.classList.add('open');b.classList.add('open');d.setAttribute('aria-hidden','false');refreshMemories();}
+function closeMemory(){const d=$('#memoryDrawer');const b=$('#historyBackdrop');if(!d||!b)return;d.classList.remove('open');b.classList.remove('open');d.setAttribute('aria-hidden','true');}
+async function refreshMemories(){const k=key.value.trim();if(!k)return;const q=($('#memorySearch')?.value||'').trim();try{const url=q?`/api/memories/search?q=${encodeURIComponent(q)}`:'/api/memories';const r=await fetch(url,{headers:{'X-Doom-Key':k}});if(!r.ok)throw new Error();const rows=await r.json();renderMemories(rows);}catch{if($('#memoryList'))$('#memoryList').innerHTML='<div class="doom-history-empty">Falha ao carregar a memória.</div>';}}
+function renderMemories(items){const list=$('#memoryList');if(!list)return;$('#memoryCount').textContent=`${items.length} ${items.length===1?'memória ativa':'memórias ativas'}`;if(!items.length){list.innerHTML='<div class="doom-history-empty">Nenhuma memória encontrada.</div>';return;}list.innerHTML=items.map(m=>`<div class="doom-memory-item"><div class="doom-history-title">${escapeHtml(m.category.replaceAll('_',' '))}</div><div class="doom-memory-content">${escapeHtml(m.content)}</div><div class="doom-history-meta"><span>${formatHistoryDate(m.created_at)}</span><button class="doom-mini-btn" data-memory="${m.id}" type="button">Excluir</button></div></div>`).join('');list.querySelectorAll('[data-memory]').forEach(btn=>btn.onclick=()=>deleteMemory(Number(btn.dataset.memory)));}
+async function deleteMemory(id){const k=key.value.trim();if(!k||!confirm('Excluir esta memória da Doom?'))return;try{const r=await fetch(`/api/memories/${id}`,{method:'DELETE',headers:{'X-Doom-Key':k}});if(!r.ok)throw new Error();refreshMemories();setState('success');setTimeout(()=>setState('online'),700);}catch{setState('error');}}
+async function addMemory(){const k=key.value.trim();const category=$('#memoryCategory')?.value||'general';const content=($('#memoryContent')?.value||'').trim();if(!k)return alert('Digite sua Chave Doom primeiro.');if(!content)return;try{const r=await fetch('/api/memories',{method:'POST',headers:{'Content-Type':'application/json','X-Doom-Key':k},body:JSON.stringify({category,content})});if(!r.ok)throw new Error();$('#memoryContent').value='';refreshMemories();setState('memory');setTimeout(()=>setState('online'),800);}catch{setState('error');}}
+$('#memoryBtn')?.addEventListener('click',openMemory);$('#memoryClose')?.addEventListener('click',closeMemory);$('#historyBackdrop')?.addEventListener('click',()=>{closeHistory();closeMemory();});$('#memorySearch')?.addEventListener('input',()=>{clearTimeout(window.__doomMemoryTimer);window.__doomMemoryTimer=setTimeout(refreshMemories,250);});$('#addMemory')?.addEventListener('click',addMemory);

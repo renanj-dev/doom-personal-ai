@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.2.0 — Memory Intelligence
+
+- Added confirmation-based memory proposals from natural-language requests.
+- Added pending/approved/rejected memory proposal lifecycle.
+- Added lightweight memory relevance ranking for current context.
+- Added memory search API.
+- Added memory management drawer to the web UI.
+- Kept persistent memory separate from conversation history.
+
+
 ## v1.1.0 — Memory Engine
 
 - Added persistent conversation history grouped by session.
