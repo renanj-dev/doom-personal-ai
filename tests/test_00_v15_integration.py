@@ -50,7 +50,7 @@ def fake_cortex(**kwargs):
     assert kwargs["research_text"]
     assert "Conteúdo da fonte de teste" in kwargs["research_text"]
     from app.cortex import CortexRoute
-    return "Resposta baseada nas fontes.", CortexRoute("analysis", "ANÁLISE / POSSIBILIDADES", "ollama", "test-model", 0, "teste")
+    return "Resposta baseada nas fontes.", CortexRoute("analysis", "ANÁLISE / POSSIBILIDADES", "ollama", "test-model", 0, "teste"), None
 
 main_mod.ask_with_cortex = fake_cortex
 
@@ -59,7 +59,7 @@ def test_startup_toggle_and_chat():
     with TestClient(app) as client:
         h = client.get("/health")
         assert h.status_code == 200
-        assert h.json()["version"] == "1.5.0"
+        assert h.json()["version"] == "1.5.1"
 
         s = client.get("/api/deep-search", headers={"X-Doom-Key": "test-key"})
         assert s.status_code == 200

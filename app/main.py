@@ -11,17 +11,18 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut)
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
 from .memory_engine import (backfill_legacy_conversations, delete_conversation, get_messages, get_or_create_conversation, list_conversations, new_session_id, search_history, touch_conversation, detect_memory_intent, extract_memory_content, infer_memory_category, create_memory_proposal, get_pending_proposal, resolve_memory_proposal, cancel_memory_proposal, relevant_memories, AFFIRMATIVE_MEMORY, NEGATIVE_MEMORY)
 from .context_engine import build_context
 from .tools import TOOL_ENGINE
+from .security import VALID_MODES, VALID_SCOPES, get_effective_policy, upsert_permission, delete_permission
 from .deep_search import DEEP_SEARCH_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.5.0")
+app = FastAPI(title="Doom Personal AI", version="1.5.1")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -29,7 +30,7 @@ if settings.cors_list:
         CORSMiddleware,
         allow_origins=settings.cors_list,
         allow_credentials=False,
-        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["*"],
     )
 
@@ -226,8 +227,55 @@ def search_memories(q: str, db: Session = Depends(get_db)):
 
 
 @app.get("/api/tools", dependencies=[Depends(auth)])
-def tools_catalog():
-    return {"tools": TOOL_ENGINE.catalog()}
+def tools_catalog(session_id: str = "main"):
+    catalog = []
+    for tool in TOOL_ENGINE.catalog():
+        policy = get_effective_policy(tool["name"], session_id, settings.doom_user_name, tool["permission"])
+        catalog.append(tool | {"effective_mode": policy["mode"], "policy_source": policy["source"]})
+    return {"tools": catalog, "count": len(catalog)}
+
+
+@app.get("/api/tools/permissions", dependencies=[Depends(auth)])
+def tool_permissions(session_id: str = "main"):
+    output = []
+    for tool in TOOL_ENGINE.catalog():
+        policy = get_effective_policy(tool["name"], session_id, settings.doom_user_name, tool["permission"])
+        output.append(ToolPermissionOut(tool_name=tool["name"], scope=policy["scope"] or "default", scope_id=policy["scope_id"], mode=policy["mode"], enabled=policy["enabled"], source=policy["source"]))
+    return {"session_id": session_id, "permissions": output}
+
+
+@app.put("/api/tools/permissions", dependencies=[Depends(auth)])
+def update_tool_permission(payload: ToolPermissionUpdate):
+    if payload.tool_name not in TOOL_ENGINE.tools:
+        raise HTTPException(status_code=404, detail="Ferramenta não encontrada.")
+    if payload.mode not in VALID_MODES:
+        raise HTTPException(status_code=422, detail="Modo de permissão inválido.")
+    if payload.scope not in VALID_SCOPES:
+        raise HTTPException(status_code=422, detail="Escopo de permissão inválido.")
+    if payload.scope == "user" and payload.scope_id not in (None, settings.doom_user_name):
+        raise HTTPException(status_code=403, detail="O usuário informado não corresponde ao usuário configurado da Doom.")
+    if payload.scope == "user" and not payload.scope_id:
+        payload.scope_id = settings.doom_user_name
+    try:
+        row = upsert_permission(payload.tool_name, payload.scope, payload.scope_id, payload.mode, payload.enabled)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return ToolPermissionOut(tool_name=row.tool_name, scope=row.scope, scope_id=row.scope_id, mode=row.mode, enabled=row.enabled, source=row.scope)
+
+
+@app.delete("/api/tools/permissions/{tool_name}", dependencies=[Depends(auth)])
+def reset_tool_permission(tool_name: str, scope: str = "global", scope_id: str | None = None):
+    if tool_name not in TOOL_ENGINE.tools:
+        raise HTTPException(status_code=404, detail="Ferramenta não encontrada.")
+    if scope == "user" and scope_id not in (None, settings.doom_user_name):
+        raise HTTPException(status_code=403, detail="O usuário informado não corresponde ao usuário configurado da Doom.")
+    if scope == "user" and not scope_id:
+        scope_id = settings.doom_user_name
+    try:
+        deleted = delete_permission(tool_name, scope, scope_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"ok": True, "deleted": deleted, "tool_name": tool_name, "scope": scope, "scope_id": scope_id}
 
 
 @app.post("/api/tools/execute", dependencies=[Depends(auth)])
@@ -235,9 +283,16 @@ def execute_tool(payload: ToolExecuteRequest):
     return TOOL_ENGINE.execute(payload.tool, payload.args, payload.session_id, settings.doom_user_name, payload.confirmation_token)
 
 
+@app.post("/api/tools/execute-batch", dependencies=[Depends(auth)])
+def execute_tools_batch(payload: dict):
+    session_id = str(payload.get("session_id") or "main")
+    calls = payload.get("calls")
+    return TOOL_ENGINE.execute_many(calls, session_id, settings.doom_user_name)
+
+
 @app.get("/api/audit/tools", dependencies=[Depends(auth)])
 def tool_audit(limit: int = 100, session_id: str | None = None, db: Session = Depends(get_db)):
-    stmt = select(ToolAuditRecord).order_by(ToolAuditRecord.timestamp.desc()).limit(min(limit, 500))
+    stmt = select(ToolAuditRecord).order_by(ToolAuditRecord.timestamp.desc()).limit(min(max(1, limit), 500))
     if session_id:
         stmt = stmt.where(ToolAuditRecord.session_id == session_id)
     rows = db.scalars(stmt).all()
@@ -347,6 +402,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
 
     mode = infer_mode(payload.message)
     route = None
+    tool_confirmation = None
     context_bundle = None
     deep_search_used = False
     deep_search_result = None
@@ -403,7 +459,7 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
                 deep_search_used = get_global_deep_search_enabled(db) if payload.deep_search is None else payload.deep_search
                 if deep_search_used:
                     deep_search_result = DEEP_SEARCH_ENGINE.research(payload.message, payload.session_id)
-                reply, route = ask_with_cortex(
+                reply, route, tool_confirmation = ask_with_cortex(
                     memory_text=context_bundle.memory_text,
                     recent_messages=compact_messages,
                     user_message=payload.message,
@@ -435,4 +491,5 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         deep_search=deep_search_used,
         deep_search_query=deep_search_result.query if deep_search_result else None,
         deep_search_sources=[DeepSearchSourceOut(title=x.title, url=x.url, snippet=x.snippet) for x in (deep_search_result.sources if deep_search_result else ())],
+        tool_confirmation=ToolConfirmationOut(**tool_confirmation) if tool_confirmation else None,
     )

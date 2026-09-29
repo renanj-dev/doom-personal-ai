@@ -6,9 +6,9 @@
     <header class="doom-topbar">
       <div class="doom-brand"><div class="doom-orb" aria-hidden="true">◉</div><div><h1>DOOM</h1><div class="doom-sub">PERSONAL AI · FOREST CORE</div></div></div>
       <div class="doom-top-center"><div class="eyebrow">DOOM CORTEX</div><div class="status-name" id="modeNote">ONLINE</div></div>
-      <div class="doom-actions"><button id="memoryBtn" class="doom-icon-btn" type="button" aria-label="Abrir memória">◈</button><button id="deepSearchBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Deep Search">⌕</button><button id="historyBtn" class="doom-icon-btn" type="button" aria-label="Abrir histórico">☰</button><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div>
+      <div class="doom-actions"><button id="memoryBtn" class="doom-icon-btn" type="button" aria-label="Abrir memória">◈</button><button id="deepSearchBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Deep Search">⌕</button><button id="toolBtn" class="doom-icon-btn" type="button" aria-label="Abrir ferramentas">⚙</button><button id="historyBtn" class="doom-icon-btn" type="button" aria-label="Abrir histórico">☰</button><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div>
     </header>
-    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.5.0</div></div>
+    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.5.1</div></div>
     <main class="doom-layout">
       <aside class="doom-panel doom-side left" aria-label="Cortex">
         <h2>Cortex</h2>
@@ -28,7 +28,7 @@
         <div class="doom-module"><div class="k">Estado</div><div class="v" id="systemState">ONLINE</div><div class="s">Estado semântico atual.</div></div>
         <div class="doom-module"><div class="k">Cérebro</div><div class="v" id="engineValue">CORTEX</div><div class="s" id="engineNote">Roteamento automático.</div></div>
         <div class="doom-module"><div class="k">Link</div><div class="v" id="linkValue">ONLINE</div><div class="s">Conectividade com o núcleo.</div></div>
-        <div class="doom-module"><div class="k">Visual</div><div class="v">FOREST CORE</div><div class="s">Accents semânticos + runas.</div></div><div class="doom-module"><div class="k">Pesquisa</div><div class="v" id="searchValue">OFF</div><div class="s" id="searchNote">Deep Search desativado.</div></div><div class="doom-module"><div class="k">Contexto</div><div class="v" id="contextValue">ATIVO</div><div class="s" id="contextNote">Recência + recuperação relevante.</div></div>
+        <div class="doom-module"><div class="k">Visual</div><div class="v">FOREST CORE</div><div class="s">Accents semânticos + runas.</div></div><div class="doom-module"><div class="k">Ferramentas</div><div class="v" id="toolValue">ATIVAS</div><div class="s" id="toolNote">Tool Engine 2.0.</div></div><div class="doom-module"><div class="k">Pesquisa</div><div class="v" id="searchValue">OFF</div><div class="s" id="searchNote">Deep Search desativado.</div></div><div class="doom-module"><div class="k">Contexto</div><div class="v" id="contextValue">ATIVO</div><div class="s" id="contextNote">Recência + recuperação relevante.</div></div>
       </aside>
     </main>
     <footer class="doom-footer"><span>DOOM SYSTEM</span><span>IDENTITY · MEMORY · CORTEX · VISUAL CODEX</span></footer>
@@ -36,6 +36,11 @@
       <div class="doom-history-head"><div><strong>Histórico</strong><span id="historyCount">0 conversas</span></div><button id="historyClose" class="doom-icon-btn" type="button" aria-label="Fechar histórico">×</button></div>
       <div class="doom-history-tools"><button id="newConversation" class="doom-btn" type="button">+ Nova conversa</button><input id="historySearch" class="doom-input" type="search" placeholder="Buscar no histórico" aria-label="Buscar no histórico"></div>
       <div id="historyList" class="doom-history-list"></div>
+    </div>
+    <div id="toolDrawer" class="doom-tool-drawer" aria-hidden="true">
+      <div class="doom-history-head"><div><strong>Ferramentas</strong><span id="toolCount">0 ferramentas</span></div><button id="toolClose" class="doom-icon-btn" type="button" aria-label="Fechar ferramentas">×</button></div>
+      <div class="doom-tool-note">Controle o modo de execução de cada ferramenta. Padrão: seguro. Alterações são persistentes no Core.</div>
+      <div id="toolList" class="doom-tool-list"></div>
     </div>
     <div id="memoryDrawer" class="doom-memory-drawer" aria-hidden="true">
       <div class="doom-history-head"><div><strong>Memória</strong><span id="memoryCount">0 memórias ativas</span></div><button id="memoryClose" class="doom-icon-btn" type="button" aria-label="Fechar memória">×</button></div>
@@ -45,5 +50,5 @@
     <div id="historyBackdrop" class="doom-history-backdrop" aria-hidden="true"></div>
   </div>
 </div>
-<script src="/static/doom-state.js?v=1.5.0"></script>
+<script src="/static/doom-state.js?v=1.5.1"></script>
 </body></html>

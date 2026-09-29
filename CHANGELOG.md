@@ -16,6 +16,21 @@ v1.5.0
 
 # Changelog
 
+## v1.5.1 — Tool Engine 2.0
+
+- catálogo de ferramentas estruturado e dinâmico no protocolo do Cortex;
+- validação de argumentos antes da execução;
+- request_id e métricas básicas por execução;
+- timeout e retries controlados;
+- execução em lote limitada e interrompida diante de falhas/confirmações;
+- permissões persistentes por escopo global, usuário e sessão;
+- confirmação interativa com token único e validade de 120s;
+- painel de ferramentas na UI;
+- auditoria das etapas do Tool Engine;
+- preservação das ferramentas já existentes da v1.4.x e do Deep Search da v1.5.0.
+
+
+
 ## 1.4.5
 - Correção de migração incremental do PostgreSQL/SQLite para bancos existentes da v1.3.
 - `memories.updated_at` e `memories.revision` agora são adicionados automaticamente sem apagar dados.

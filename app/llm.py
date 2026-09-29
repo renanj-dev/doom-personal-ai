@@ -9,14 +9,26 @@ settings = get_settings()
 
 
 def build_tool_protocol() -> str:
-    return """
-PROTOCOLO DE FERRAMENTAS DA DOOM
-Quando uma ferramenta for necessária, responda APENAS com um objeto JSON em uma única linha, sem Markdown:
-{\"tool\":\"calculator\",\"args\":{\"expression\":\"2+2\"}}
-Ferramentas disponíveis: calculator(expression:string), current_time(), system_info().
-Nunca invente ferramentas ou parâmetros. Se nenhuma ferramenta for necessária, responda normalmente em linguagem natural.
-""".strip()
+    from .tools import TOOL_ENGINE
 
+    lines = [
+        "PROTOCOLO DE FERRAMENTAS DA DOOM",
+        "Quando uma ferramenta for necessária, responda APENAS com um objeto JSON em uma única linha, sem Markdown:",
+        '{"tool":"calculator","args":{"expression":"2+2"}}',
+        "Ferramentas disponíveis:",
+    ]
+    for tool in TOOL_ENGINE.catalog():
+        params = ", ".join(
+            f"{name}:{details.get('type', 'any')}"
+            + (" [obrigatório]" if details.get("required") else "")
+            for name, details in tool["parameters"].items()
+        ) or "sem parâmetros"
+        lines.append(f"- {tool['name']} ({params}) — {tool['description']}")
+    lines.append(
+        "Nunca invente ferramentas ou parâmetros. Se nenhuma ferramenta for necessária, "
+        "responda normalmente em linguagem natural."
+    )
+    return "\n".join(lines)
 
 
 def build_user_profile(memory_rows: list[tuple[str, str]], user_name: str) -> str:

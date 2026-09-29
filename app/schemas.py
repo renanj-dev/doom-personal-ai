@@ -15,6 +15,14 @@ class DeepSearchSourceOut(BaseModel):
     snippet: str = ""
 
 
+class ToolConfirmationOut(BaseModel):
+    request_id: str | None = None
+    tool: str
+    args: dict = Field(default_factory=dict)
+    confirmation_token: str
+    expires_in: int = 120
+
+
 class ChatResponse(BaseModel):
     session_id: str
     reply: str
@@ -30,6 +38,7 @@ class ChatResponse(BaseModel):
     deep_search: bool = False
     deep_search_query: str | None = None
     deep_search_sources: list[DeepSearchSourceOut] = Field(default_factory=list)
+    tool_confirmation: ToolConfirmationOut | None = None
 
 
 class MemoryCreate(BaseModel):
@@ -103,3 +112,20 @@ class ToolExecuteRequest(BaseModel):
 
 class DeepSearchToggleRequest(BaseModel):
     enabled: bool
+
+
+class ToolPermissionUpdate(BaseModel):
+    tool_name: str = Field(min_length=1, max_length=128)
+    mode: str = Field(min_length=1, max_length=16)
+    enabled: bool = True
+    scope: str = Field(default="global", min_length=1, max_length=16)
+    scope_id: str | None = Field(default=None, max_length=128)
+
+
+class ToolPermissionOut(BaseModel):
+    tool_name: str
+    scope: str
+    scope_id: str | None = None
+    mode: str
+    enabled: bool
+    source: str
