@@ -106,14 +106,12 @@ def _recent_limit_for_query(query: str) -> int:
 
 def _select_recent(db: Session, session_id: str, query: str) -> list[Message]:
     limit = _recent_limit_for_query(query)
-    rows = list(
-        db.scalars(
-            select(Message)
-            .where(Message.session_id == session_id)
-            .order_by(Message.created_at.desc())
-            .limit(limit)
-        ).all()
-    )
+    stmt = select(Message).where(Message.session_id == session_id)
+    # For greetings, identity questions and explicit memory questions, the
+    # recent context must be a user turn, never an old assistant answer.
+    if limit == 1:
+        stmt = stmt.where(Message.role == "user")
+    rows = list(db.scalars(stmt.order_by(Message.created_at.desc()).limit(limit)).all())
     rows.reverse()
     return rows
 

@@ -36,12 +36,12 @@ def test_tool_engine_2_catalog_permissions_confirmation_and_batch():
 
         health = client.get("/health")
         assert health.status_code == 200
-        assert health.json()["version"] == "1.8.1"
+        assert health.json()["version"] == "1.9.0"
 
         catalog = client.get("/api/tools", headers=headers)
         assert catalog.status_code == 200
         data = catalog.json()
-        assert data["count"] == 3
+        assert data["count"] == 4
         calculator = next(item for item in data["tools"] if item["name"] == "calculator")
         assert calculator["effective_mode"] == "safe"
         assert calculator["parameters"]["expression"]["required"] is True

@@ -14,6 +14,7 @@ from typing import Any, Callable
 from .db import SessionLocal
 from .models import ToolAuditRecord
 from .security import PermissionEngine, PermissionMode
+from .integrations import external_http_request
 
 _ALLOWED_BINOPS = {
     ast.Add: operator.add,
@@ -121,6 +122,24 @@ class ToolEngine:
         )
         self.register(
             ToolSpec(
+                "external_http",
+                "Acessa somente integrações externas previamente cadastradas e allowlisted. Requer confirmação por padrão; nunca escolha URLs arbitrárias.",
+                external_http_request,
+                PermissionMode.CONFIRM,
+                {
+                    "integration": {"type": "string", "required": True, "max_length": 80},
+                    "method": {"type": "string", "required": True, "max_length": 8, "enum": ["GET", "POST", "PUT", "PATCH", "DELETE"]},
+                    "path": {"type": "string", "required": True, "max_length": 600},
+                    "query": {"type": "object", "required": False},
+                    "body": {"type": "object", "required": False},
+                },
+                category="integration",
+                timeout_seconds=10.0,
+                retries=0,
+            )
+        )
+        self.register(
+            ToolSpec(
                 "system_info",
                 "Retorna informações básicas do ambiente do servidor.",
                 system_info,
@@ -134,19 +153,28 @@ class ToolEngine:
         self.tools[spec.name] = spec
 
     def catalog(self):
-        return [
-            {
+        integrations = []
+        try:
+            from .integrations import INTEGRATION_ENGINE
+            integrations = [x["name"] for x in INTEGRATION_ENGINE.list() if x.get("enabled")]
+        except Exception:
+            integrations = []
+        rows = []
+        for spec in self.tools.values():
+            description = spec.description
+            if spec.name == "external_http":
+                description += " Integrações ativas: " + (", ".join(integrations) if integrations else "nenhuma registrada") + "."
+            rows.append({
                 "name": spec.name,
-                "description": spec.description,
+                "description": description,
                 "permission": spec.default_mode,
                 "parameters": spec.parameters,
                 "category": spec.category,
                 "version": spec.version,
                 "timeout_seconds": spec.timeout_seconds,
                 "retries": spec.retries,
-            }
-            for spec in self.tools.values()
-        ]
+            })
+        return rows
 
     def parse_request(self, text: str):
         text = (text or "").strip()
@@ -203,6 +231,8 @@ class ToolEngine:
                 return {"ok": False, "error": f"Tipo inválido para {name}: esperado {expected}."}
             if isinstance(value, str) and "max_length" in rule and len(value) > int(rule["max_length"]):
                 return {"ok": False, "error": f"Parâmetro {name} excede o limite permitido."}
+            if "enum" in rule and value not in list(rule["enum"]):
+                return {"ok": False, "error": f"Valor inválido para {name}."}
 
         return {"ok": True, "args": args}
 

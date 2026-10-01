@@ -128,6 +128,25 @@ class SafetyEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
+class ExternalIntegration(Base):
+    __tablename__ = "external_integrations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), unique=True, index=True)
+    kind: Mapped[str] = mapped_column(String(32), default="http_json")
+    base_url: Mapped[str] = mapped_column(String(500))
+    allowed_paths: Mapped[str] = mapped_column(Text, default="/")
+    allowed_methods: Mapped[str] = mapped_column(String(120), default="GET")
+    auth_env_var: Mapped[str] = mapped_column(String(120), default="")
+    auth_header: Mapped[str] = mapped_column(String(100), default="Authorization")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    timeout_seconds: Mapped[float] = mapped_column(default=10.0)
+    last_test_status: Mapped[str] = mapped_column(String(32), default="")
+    last_test_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class ToolPermission(Base):
     __tablename__ = "tool_permissions"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

@@ -1,3 +1,10 @@
+# Changelog
+
+## 1.9.0 — External Integrations
+- Adicionado `ExternalIntegration` e `IntegrationEngine`.
+- Adicionada ferramenta `external_http` no Tool Engine 2.0.
+- Adicionadas rotas de registry, habilitação/desabilitação, teste e remoção.
+- Adicionadas políticas contra SSRF, redirects, URLs arbitrárias e segredos em banco.
 
 ## 1.8.2 — Context Isolation
 - Current user request is explicitly appended as the final user turn for Cortex calls.

@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest)
+from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun, ExternalIntegration
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -24,9 +24,10 @@ from .agent import run as run_agent, resume_after_confirmation, run_list as agen
 from .identity import IDENTITY_ENGINE, SESSION_COOKIE_NAME, Principal
 from .safety_legal import SafetyDecision, assess_request, authorize_break_glass, consume_grant, register_break_glass, revoke_all as revoke_all_break_glass, status as safety_status
 from .cancellation import CANCELLATIONS
+from .integrations import INTEGRATION_ENGINE, IntegrationError
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.8.2")
+app = FastAPI(title="Doom Personal AI", version="1.9.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -220,6 +221,44 @@ def authorize_emergency_override(payload: SafetyAuthorizeRequest, db: Session = 
 @app.post("/api/safety/break-glass/revoke-all", dependencies=[Depends(auth)])
 def revoke_emergency_overrides(db: Session = Depends(get_db)):
     return {"ok": True, "revoked": revoke_all_break_glass(db)}
+
+
+@app.get("/api/integrations", response_model=list[ExternalIntegrationOut], dependencies=[Depends(auth)])
+def list_integrations():
+    return [ExternalIntegrationOut(**row) for row in INTEGRATION_ENGINE.list()]
+
+
+@app.post("/api/integrations", response_model=ExternalIntegrationOut, dependencies=[Depends(auth)])
+def create_integration(payload: ExternalIntegrationCreate):
+    try:
+        return ExternalIntegrationOut(**INTEGRATION_ENGINE.register(**payload.model_dump()))
+    except IntegrationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.patch("/api/integrations/{name}", response_model=ExternalIntegrationOut, dependencies=[Depends(auth)])
+def toggle_integration(name: str, payload: ExternalIntegrationToggle):
+    try:
+        return ExternalIntegrationOut(**INTEGRATION_ENGINE.set_enabled(name, payload.enabled))
+    except IntegrationError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.delete("/api/integrations/{name}", dependencies=[Depends(auth)])
+def delete_integration(name: str):
+    if not INTEGRATION_ENGINE.delete(name):
+        raise HTTPException(status_code=404, detail="Integração não encontrada.")
+    return {"ok": True, "name": name}
+
+
+@app.post("/api/integrations/{name}/test", dependencies=[Depends(auth)])
+def test_integration(name: str):
+    try:
+        return INTEGRATION_ENGINE.test(name)
+    except IntegrationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Falha ao testar integração: {str(exc)[:500]}") from exc
 
 
 @app.get("/api/cortex", dependencies=[Depends(auth)])

@@ -93,6 +93,39 @@ class BreakGlassRegisterOut(BaseModel):
     warning: str
 
 
+class ExternalIntegrationCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    kind: str = Field(default="http_json", min_length=1, max_length=32)
+    base_url: str = Field(min_length=8, max_length=500)
+    allowed_paths: list[str] = Field(default_factory=lambda: ["/"])
+    allowed_methods: list[str] = Field(default_factory=lambda: ["GET"])
+    auth_env_var: str = Field(default="", max_length=120)
+    auth_header: str = Field(default="Authorization", max_length=100)
+    enabled: bool = True
+    timeout_seconds: float | None = Field(default=None, ge=0.5, le=30.0)
+
+
+class ExternalIntegrationToggle(BaseModel):
+    enabled: bool
+
+
+class ExternalIntegrationOut(BaseModel):
+    id: int
+    name: str
+    kind: str
+    base_url: str
+    allowed_paths: list[str]
+    allowed_methods: list[str]
+    auth_env_var: str = ""
+    auth_header: str = "Authorization"
+    enabled: bool
+    timeout_seconds: float
+    created_at: datetime
+    updated_at: datetime
+    last_test_status: str = ""
+    last_test_at: datetime | None = None
+
+
 class MemoryCreate(BaseModel):
     category: str = Field(default="general", min_length=1, max_length=64)
     content: str = Field(min_length=1, max_length=5000)

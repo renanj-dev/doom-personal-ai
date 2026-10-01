@@ -69,6 +69,13 @@ class Settings(BaseSettings):
     emergency_cooldown_minutes: int = 10
     emergency_require_reason: bool = True
 
+    # Doom External Integrations v1.9
+    integrations_enabled: bool = True
+    integrations_allow_private: bool = False
+    integrations_default_timeout: float = 10.0
+    integrations_max_body_chars: int = 12000
+    integrations_max_response_chars: int = 12000
+
     # Doom Tool Engine 2.0
     tool_timeout_seconds: float = 8.0
     tool_max_retries: int = 1

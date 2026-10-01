@@ -80,6 +80,7 @@ def init_db() -> None:
         BreakGlassCredential,
         BreakGlassGrant,
         SafetyEvent,
+        ExternalIntegration,
     )
 
     Base.metadata.create_all(bind=engine)
