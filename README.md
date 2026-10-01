@@ -1,4 +1,4 @@
-# Doom Personal AI v1.6.0
+# Doom Personal AI v1.8.0
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -80,7 +80,37 @@ A camada de ferramentas foi evoluída com catálogo estruturado, validação de 
 Endpoints principais: `GET /api/tools`, `GET /api/tools/permissions`, `PUT /api/tools/permissions`, `DELETE /api/tools/permissions/{tool_name}`, `POST /api/tools/execute`, `POST /api/tools/execute-batch` e `GET /api/audit/tools`.
 
 
-## Doom v1.6.0 — Planner / Agent
+## Doom v1.7.0 — Planner / Agent
 O Agent é um modo opcional do Core, desligado por padrão. Ele transforma uma tarefa em um plano estruturado de até 8 etapas, executa somente ferramentas presentes no catálogo sob as políticas do Tool Engine, pode coordenar Deep Search quando habilitado e registra cada execução no banco.
 
 Endpoints principais: `GET /api/agent`, `PATCH /api/agent`, `GET /api/agent/runs`, `GET /api/agent/runs/{run_id}` e `POST /api/agent/runs/{run_id}/resume`.
+
+
+## v1.7.0 — Security + Identity
+- identidade persistente do proprietário Doom;
+- API keys registradas somente por hash;
+- sessões autenticadas com cookie HttpOnly e expiração configurável;
+- suporte a Bearer token para clientes externos;
+- logout e revogação de todas as sessões;
+- endpoint de identidade e listagem de sessões;
+- compatibilidade temporária com `X-Doom-Key`;
+- registro sem armazenar tokens de sessão em texto.
+
+
+## Doom v1.7.0 — Security + Identity
+
+A v1.7 adiciona a fundação de identidade e sessão do Core:
+- identidade persistente do proprietário;
+- registro das API keys somente por hash;
+- sessões com cookie HttpOnly e expiração configurável;
+- autenticação por Bearer token para clientes externos;
+- logout e revogação de sessões;
+- painel de identidade no Command Center;
+- compatibilidade temporária com `X-Doom-Key`.
+
+A v1.7 ainda opera em modo single-user. O isolamento completo de dados por múltiplos usuários será tratado em uma etapa posterior.
+
+
+## Doom v1.8.0 — Safety & Legal
+
+A v1.8 adiciona uma camada determinística de Safety & Legal e o Emergency Override / Break Glass com autorização temporária, uso único, motivo obrigatório, auditoria e bloqueios absolutos não ignoráveis. Para registrar a chave via PowerShell: `python scripts\register_emergency_key.py`.

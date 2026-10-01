@@ -39,6 +39,10 @@ services:
         value: "true"
       - key: CORS_ORIGINS
         value: ""
+      - key: SECURITY_SESSION_HOURS
+        value: "12"
+      - key: SECURITY_LEGACY_API_KEY
+        value: "true"
       - key: AGENT_ENABLED
         value: "false"
       - key: AGENT_MAX_STEPS

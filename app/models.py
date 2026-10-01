@@ -8,6 +8,38 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class UserIdentity(Base):
+    __tablename__ = "doom_users"
+    user_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    username: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    display_name: Mapped[str] = mapped_column(String(160), default="Doom User")
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ApiKeyRecord(Base):
+    __tablename__ = "doom_api_keys"
+    key_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    key_prefix: Mapped[str] = mapped_column(String(16), default="")
+    key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UserSession(Base):
+    __tablename__ = "doom_sessions"
+    session_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    user_agent: Mapped[str] = mapped_column(String(300), default="")
+
+
 class Message(Base):
     __tablename__ = "messages"
 
@@ -51,6 +83,49 @@ class Conversation(Base):
     archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class BreakGlassCredential(Base):
+    __tablename__ = "break_glass_credentials"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    label: Mapped[str] = mapped_column(String(120), default="Emergency Override")
+    key_salt: Mapped[str] = mapped_column(String(64))
+    key_hash: Mapped[str] = mapped_column(String(64))
+    hash_iterations: Mapped[int] = mapped_column(Integer, default=240_000)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class BreakGlassGrant(Base):
+    __tablename__ = "break_glass_grants"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    credential_id: Mapped[int] = mapped_column(Integer, index=True)
+    session_id: Mapped[str] = mapped_column(String(128), index=True)
+    scope: Mapped[str] = mapped_column(String(64), default="chat-restricted")
+    token_salt: Mapped[str] = mapped_column(String(64))
+    token_hash: Mapped[str] = mapped_column(String(64))
+    hash_iterations: Mapped[int] = mapped_column(Integer, default=240_000)
+    reason: Mapped[str] = mapped_column(Text)
+    issued_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    used: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+
+
+class SafetyEvent(Base):
+    __tablename__ = "safety_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    event_type: Mapped[str] = mapped_column(String(64), index=True)
+    session_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    decision: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    category: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    detail: Mapped[str] = mapped_column(Text, default="")
+    grant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
 class ToolPermission(Base):

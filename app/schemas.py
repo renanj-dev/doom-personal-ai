@@ -46,6 +46,43 @@ class ChatResponse(BaseModel):
     agent: bool = False
     agent_run_id: str | None = None
     agent_status: str | None = None
+    safety_decision: str | None = None
+    safety_category: str | None = None
+    safety_reason: str | None = None
+    break_glass_required: bool = False
+
+
+class SafetyStatusOut(BaseModel):
+    enabled: bool
+    registered_credentials: int
+    active_grants: int
+    grant_minutes: int
+    max_attempts: int
+    cooldown_minutes: int
+    hard_blocks_overridable: bool
+
+
+class SafetyAuthorizeRequest(BaseModel):
+    session_id: str = Field(default="main", min_length=1, max_length=128)
+    key: str = Field(min_length=8, max_length=200)
+    reason: str = Field(min_length=5, max_length=1000)
+    scope: str = Field(default="chat-restricted", min_length=1, max_length=64)
+
+
+class SafetyAuthorizeOut(BaseModel):
+    authorized: bool
+    grant_token: str
+    expires_at: datetime
+    scope: str
+    warning: str
+
+
+class BreakGlassRegisterOut(BaseModel):
+    registered: bool
+    credential_id: int
+    label: str
+    key: str
+    warning: str
 
 
 class MemoryCreate(BaseModel):
@@ -145,3 +182,32 @@ class AgentToggleRequest(BaseModel):
 class AgentRunResumeRequest(BaseModel):
     session_id: str = Field(default="main", min_length=1, max_length=128)
     confirmation_token: str = Field(min_length=1, max_length=256)
+
+
+class IdentitySessionOut(BaseModel):
+    session_id: str
+    created_at: datetime
+    expires_at: datetime
+    revoked: bool
+    expired: bool
+    user_agent: str = ""
+
+
+class IdentityOut(BaseModel):
+    user_id: str
+    username: str
+    display_name: str
+    active: bool
+    auth_method: str
+    session_id: str | None = None
+    session_hours: int | None = None
+    mode: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class SessionLoginOut(BaseModel):
+    authenticated: bool
+    identity: IdentityOut
+    expires_at: datetime
+    access_token: str | None = None

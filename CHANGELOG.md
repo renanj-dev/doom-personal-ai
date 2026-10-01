@@ -1,4 +1,34 @@
+# Changelog
+
+## 1.8.0 — Safety & Legal + Emergency Override
+
+- Adicionado Safety & Legal Engine.
+- Adicionados níveis `allow`, `review`, `break_glass` e `blocked`.
+- Adicionado Emergency Override / Break Glass com hash PBKDF2, expiração, uso único, vínculo de sessão, motivo obrigatório, tentativas e cooldown.
+- Bloqueios absolutos permanecem não ignoráveis.
+- Adicionada auditoria persistente de eventos de segurança.
+- Adicionados endpoints e painel visual de Safety & Legal.
+
+
+## 1.7.0 — Security + Identity
+- Added persistent Doom owner identity.
+- Added hashed API-key registry.
+- Added expiring HttpOnly session cookies.
+- Added Bearer session authentication for external clients.
+- Added logout and revoke-all session controls.
+- Added identity/session endpoints and UI drawer.
+- Kept `X-Doom-Key` as a compatibility path during migration.
+
 # CHANGELOG
+
+## v1.7.0 — Security + Identity
+- identidade persistente do proprietário Doom;
+- API keys registradas somente por hash;
+- sessões autenticadas com expiração configurável;
+- cookie HttpOnly para o navegador e Bearer token para clientes externos;
+- logout e revogação de sessões;
+- painel de identidade no Command Center;
+- compatibilidade temporária com `X-Doom-Key`.
 
 ## v1.6.0 — Planner / Agent
 - modo Agent global ON/OFF e override por requisição;

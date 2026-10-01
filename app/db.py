@@ -74,6 +74,12 @@ def init_db() -> None:
         DeepSearchRun,
         AgentRun,
         AgentStep,
+        UserIdentity,
+        ApiKeyRecord,
+        UserSession,
+        BreakGlassCredential,
+        BreakGlassGrant,
+        SafetyEvent,
     )
 
     Base.metadata.create_all(bind=engine)

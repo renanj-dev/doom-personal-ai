@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest)
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -21,16 +21,18 @@ from .tools import TOOL_ENGINE
 from .security import VALID_MODES, VALID_SCOPES, get_effective_policy, upsert_permission, delete_permission
 from .deep_search import DEEP_SEARCH_ENGINE
 from .agent import run as run_agent, resume_after_confirmation, run_list as agent_run_list
+from .identity import IDENTITY_ENGINE, SESSION_COOKIE_NAME, Principal
+from .safety_legal import SafetyDecision, assess_request, authorize_break_glass, consume_grant, register_break_glass, revoke_all as revoke_all_break_glass, status as safety_status
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.6.0")
+app = FastAPI(title="Doom Personal AI", version="1.8.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_list,
-        allow_credentials=False,
+        allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
         allow_headers=["*"],
     )
@@ -39,6 +41,7 @@ if settings.cors_list:
 @app.on_event("startup")
 def startup() -> None:
     init_db()
+    IDENTITY_ENGINE.bootstrap()
     db = SessionLocal()
     try:
         backfill_legacy_conversations(db)
@@ -88,14 +91,135 @@ def set_global_deep_search_enabled(db: Session, enabled: bool) -> None:
     db.commit()
 
 
-def auth(x_doom_key: Annotated[str | None, Header()] = None) -> None:
-    if not x_doom_key or x_doom_key != settings.doom_api_key:
-        raise HTTPException(status_code=401, detail="Chave Doom inválida.")
+def _extract_bearer(authorization: str | None) -> str | None:
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        return None
+    return token.strip()
+
+
+def auth(
+    request: Request,
+    x_doom_key: Annotated[str | None, Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> Principal:
+    session_token = request.cookies.get(SESSION_COOKIE_NAME)
+    principal = IDENTITY_ENGINE.authenticate_session(session_token)
+    if principal is not None:
+        return principal
+
+    bearer = _extract_bearer(authorization)
+    principal = IDENTITY_ENGINE.authenticate_session(bearer)
+    if principal is not None:
+        return principal
+
+    if settings.security_legacy_api_key:
+        principal = IDENTITY_ENGINE.authenticate_api_key(x_doom_key)
+        if principal is not None:
+            return principal
+
+    raise HTTPException(status_code=401, detail="Sessão Doom inválida ou expirada.")
 
 
 @app.get("/health")
 def health() -> dict:
     return {"status": "online", "name": "Doom", "version": app.version}
+
+
+@app.post("/api/auth/session", response_model=SessionLoginOut)
+def create_auth_session(
+    request: Request,
+    response: Response,
+    x_doom_key: Annotated[str | None, Header()] = None,
+):
+    created = IDENTITY_ENGINE.create_session(x_doom_key, request.headers.get("user-agent"))
+    if created is None:
+        raise HTTPException(status_code=401, detail="Chave Doom inválida.")
+    token, principal, expires_at = created
+    secure = request.url.scheme.lower() == "https"
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        max_age=max(1, settings.security_session_hours) * 3600,
+        expires=expires_at,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        path="/",
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return SessionLoginOut(
+        authenticated=True,
+        identity=IdentityOut(**IDENTITY_ENGINE.me(principal)),
+        expires_at=expires_at,
+        # Returned only for non-browser API clients. The built-in UI uses the HttpOnly cookie.
+        access_token=token,
+    )
+
+
+@app.get("/api/auth/me", response_model=IdentityOut)
+def auth_me(principal: Principal = Depends(auth)):
+    return IdentityOut(**IDENTITY_ENGINE.me(principal))
+
+
+@app.get("/api/auth/sessions", response_model=list[IdentitySessionOut])
+def auth_sessions(principal: Principal = Depends(auth)):
+    return [IdentitySessionOut(**row) for row in IDENTITY_ENGINE.active_sessions(principal.user_id)]
+
+
+@app.delete("/api/auth/session")
+def logout(request: Request, response: Response, principal: Principal = Depends(auth)):
+    token = request.cookies.get(SESSION_COOKIE_NAME)
+    revoked = IDENTITY_ENGINE.revoke_session(token, principal.user_id)
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    return {"ok": True, "revoked": revoked}
+
+
+@app.post("/api/auth/revoke-all")
+def revoke_all_sessions(response: Response, principal: Principal = Depends(auth)):
+    count = IDENTITY_ENGINE.revoke_all_sessions(principal.user_id)
+    response.delete_cookie(SESSION_COOKIE_NAME, path="/")
+    return {"ok": True, "revoked_sessions": count}
+
+@app.get("/api/safety/status", response_model=SafetyStatusOut, dependencies=[Depends(auth)])
+def get_safety_status(db: Session = Depends(get_db)):
+    return safety_status(db)
+
+
+@app.post("/api/safety/break-glass/register", response_model=BreakGlassRegisterOut, dependencies=[Depends(auth)])
+def register_emergency_override(label: str = "Emergency Override", db: Session = Depends(get_db)):
+    if not settings.emergency_break_glass_enabled:
+        raise HTTPException(status_code=503, detail="Emergency Override está desativado na configuração do servidor.")
+    row, key = register_break_glass(db, label)
+    return BreakGlassRegisterOut(
+        registered=True, credential_id=row.id, label=row.label, key=key,
+        warning="A chave é exibida somente nesta resposta. Armazene-a em local seguro; o Doom guarda apenas o hash."
+    )
+
+
+@app.post("/api/safety/break-glass/authorize", response_model=SafetyAuthorizeOut, dependencies=[Depends(auth)])
+def authorize_emergency_override(payload: SafetyAuthorizeRequest, db: Session = Depends(get_db)):
+    try:
+        authorization = authorize_break_glass(
+            db, session_id=payload.session_id, key=payload.key, reason=payload.reason, scope=payload.scope
+        )
+    except PermissionError as exc:
+        raise HTTPException(status_code=429 if "Limite" in str(exc) else 401, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return SafetyAuthorizeOut(
+        authorized=True, grant_token=authorization.token, expires_at=authorization.expires_at,
+        scope=authorization.scope,
+        warning="Autorização temporária e de uso único. Ela não libera bloqueios absolutos."
+    )
+
+
+@app.post("/api/safety/break-glass/revoke-all", dependencies=[Depends(auth)])
+def revoke_emergency_overrides(db: Session = Depends(get_db)):
+    return {"ok": True, "revoked": revoke_all_break_glass(db)}
+
 
 @app.get("/api/cortex", dependencies=[Depends(auth)])
 def cortex_status() -> dict:
@@ -458,7 +582,54 @@ def infer_mode(message: str) -> str:
     return "thinking"
 
 @app.post("/api/chat", response_model=ChatResponse, dependencies=[Depends(auth)])
-def chat(payload: ChatRequest, db: Session = Depends(get_db)):
+def chat(
+    payload: ChatRequest,
+    x_doom_emergency_grant: Annotated[str | None, Header()] = None,
+    db: Session = Depends(get_db),
+):
+    safety = assess_request(payload.message)
+    emergency_authorized = False
+
+    if safety.decision == SafetyDecision.BLOCKED:
+        get_or_create_conversation(db, payload.session_id, payload.message)
+        db.add(Message(session_id=payload.session_id, role="user", content=payload.message))
+        reply = (
+            "Não posso executar essa solicitação porque ela acionou um bloqueio absoluto do Safety & Legal Engine. "
+            "O Emergency Override não pode liberar esse tipo de bloqueio."
+        )
+        db.add(Message(session_id=payload.session_id, role="assistant", content=reply))
+        from .safety_legal import _log_event
+        _log_event(db, event_type="request_blocked", session_id=payload.session_id, decision=safety.decision.value, category=safety.category, detail=safety.reason)
+        db.commit()
+        touch_conversation(db, payload.session_id)
+        return ChatResponse(
+            session_id=payload.session_id, reply=reply, mode="safety_blocked", brain="safety-engine", task="safety",
+            safety_decision=safety.decision.value, safety_category=safety.category, safety_reason=safety.reason,
+            break_glass_required=False,
+        )
+
+    if safety.decision == SafetyDecision.BREAK_GLASS:
+        if x_doom_emergency_grant:
+            emergency_authorized = consume_grant(db, session_id=payload.session_id, token=x_doom_emergency_grant)
+        if not emergency_authorized:
+            get_or_create_conversation(db, payload.session_id, payload.message)
+            db.add(Message(session_id=payload.session_id, role="user", content=payload.message))
+            reply = (
+                "A solicitação foi classificada como restrita pelo Safety & Legal Engine. Para um uso de emergência "
+                "compatível, gere uma autorização temporária em Segurança → Break Glass e envie novamente a solicitação. "
+                "A autorização é limitada, expira rapidamente e não libera bloqueios absolutos."
+            )
+            db.add(Message(session_id=payload.session_id, role="assistant", content=reply))
+            from .safety_legal import _log_event
+            _log_event(db, event_type="request_requires_break_glass", session_id=payload.session_id, decision=safety.decision.value, category=safety.category, detail=safety.reason)
+            db.commit()
+            touch_conversation(db, payload.session_id)
+            return ChatResponse(
+                session_id=payload.session_id, reply=reply, mode="safety_break_glass", brain="safety-engine", task="safety",
+                safety_decision=safety.decision.value, safety_category=safety.category, safety_reason=safety.reason,
+                break_glass_required=True,
+            )
+
     get_or_create_conversation(db, payload.session_id, payload.message)
     db.add(Message(session_id=payload.session_id, role="user", content=payload.message))
     db.commit()
@@ -569,6 +740,13 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=502, detail=f"Falha ao consultar o cérebro da Doom: {exc}") from exc
 
     db.add(Message(session_id=payload.session_id, role="assistant", content=reply))
+    from .safety_legal import _log_event
+    _log_event(
+        db, event_type="request_processed", session_id=payload.session_id,
+        decision=("emergency_authorized" if emergency_authorized else safety.decision.value),
+        category=safety.category,
+        detail=("Break Glass aplicado" if emergency_authorized else safety.reason),
+    )
     db.commit()
     touch_conversation(db, payload.session_id)
     return ChatResponse(
@@ -590,4 +768,8 @@ def chat(payload: ChatRequest, db: Session = Depends(get_db)):
         agent=agent_used,
         agent_run_id=agent_run_id,
         agent_status=agent_status,
+        safety_decision=("emergency_authorized" if emergency_authorized else safety.decision.value),
+        safety_category=safety.category,
+        safety_reason=safety.reason,
+        break_glass_required=False,
     )

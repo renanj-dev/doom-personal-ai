@@ -36,7 +36,7 @@ def test_tool_engine_2_catalog_permissions_confirmation_and_batch():
 
         health = client.get("/health")
         assert health.status_code == 200
-        assert health.json()["version"] == "1.6.0"
+        assert health.json()["version"] == "1.8.0"
 
         catalog = client.get("/api/tools", headers=headers)
         assert catalog.status_code == 200

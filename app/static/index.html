@@ -6,15 +6,15 @@
     <header class="doom-topbar">
       <div class="doom-brand"><div class="doom-orb" aria-hidden="true">◉</div><div><h1>DOOM</h1><div class="doom-sub">PERSONAL AI · FOREST CORE</div></div></div>
       <div class="doom-top-center"><div class="eyebrow">DOOM CORTEX</div><div class="status-name" id="modeNote">ONLINE</div></div>
-      <div class="doom-actions"><button id="memoryBtn" class="doom-icon-btn" type="button" aria-label="Abrir memória">◈</button><button id="deepSearchBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Deep Search">⌕</button><button id="agentBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Agent">A</button><button id="toolBtn" class="doom-icon-btn" type="button" aria-label="Abrir ferramentas">⚙</button><button id="historyBtn" class="doom-icon-btn" type="button" aria-label="Abrir histórico">☰</button><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div>
+      <div class="doom-actions"><button id="safetyBtn" class="doom-icon-btn" type="button" aria-label="Abrir Safety & Legal">⚿</button><button id="identityBtn" class="doom-icon-btn" type="button" aria-label="Abrir identidade">♙</button><button id="memoryBtn" class="doom-icon-btn" type="button" aria-label="Abrir memória">◈</button><button id="deepSearchBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Deep Search">⌕</button><button id="agentBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Agent">A</button><button id="toolBtn" class="doom-icon-btn" type="button" aria-label="Abrir ferramentas">⚙</button><button id="historyBtn" class="doom-icon-btn" type="button" aria-label="Abrir histórico">☰</button><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div>
     </header>
-    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.6.0</div></div>
+    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.8.0</div></div>
     <main class="doom-layout">
       <aside class="doom-panel doom-side left" aria-label="Cortex">
         <h2>Cortex</h2>
         <div class="doom-module"><div class="k">Núcleo</div><div class="v">DOOM CORE</div><div class="s">Personalidade, regras e contexto.</div><div class="doom-bar"><span style="width:86%"></span></div></div>
         <div class="doom-module"><div class="k">Memória</div><div class="v">ATIVA</div><div class="s">Perfil + memórias autorizadas.</div><div class="doom-bar"><span style="width:72%"></span></div></div>
-        <div class="doom-module"><div class="k">Roteamento</div><div class="v">PRONTO</div><div class="s">Arquitetura preparada para múltiplos cérebros.</div></div><div class="doom-module"><div class="k">Deep Search</div><div class="v" id="deepSearchValue">DESATIVADO</div><div class="s" id="deepSearchNote">Pesquisa profunda sob demanda.</div></div><div class="doom-module"><div class="k">Agent</div><div class="v" id="agentValue">DESATIVADO</div><div class="s" id="agentNote">Planejamento e execução por etapas.</div></div>
+        <div class="doom-module"><div class="k">Roteamento</div><div class="v">PRONTO</div><div class="s">Arquitetura preparada para múltiplos cérebros.</div></div><div class="doom-module"><div class="k">Deep Search</div><div class="v" id="deepSearchValue">DESATIVADO</div><div class="s" id="deepSearchNote">Pesquisa profunda sob demanda.</div></div><div class="doom-module"><div class="k">Agent</div><div class="v" id="agentValue">DESATIVADO</div><div class="s" id="agentNote">Planejamento e execução por etapas.</div></div><div class="doom-module"><div class="k">Identidade</div><div class="v" id="identityValue">NÃO AUTENTICADO</div><div class="s" id="identityNote">Sessão Doom.</div></div>
       </aside>
       <section class="doom-panel doom-main">
         <div class="doom-key"><input id="key" class="doom-input" type="password" placeholder="Chave Doom" autocomplete="off" aria-label="Chave Doom"><button id="saveKey" class="doom-btn">Salvar</button></div>
@@ -42,6 +42,29 @@
       <div class="doom-tool-note">Controle o modo de execução de cada ferramenta. Padrão: seguro. Alterações são persistentes no Core.</div>
       <div id="toolList" class="doom-tool-list"></div>
     </div>
+    <div id="identityDrawer" class="doom-identity-drawer" aria-hidden="true">
+      <div class="doom-history-head"><div><strong>Identidade</strong><span id="identityStatus">Sessão não autenticada</span></div><button id="identityClose" class="doom-icon-btn" type="button" aria-label="Fechar identidade">×</button></div>
+      <div class="doom-identity-card">
+        <div class="doom-identity-row"><span>Usuário</span><strong id="identityName">—</strong></div>
+        <div class="doom-identity-row"><span>ID</span><strong id="identityId">—</strong></div>
+        <div class="doom-identity-row"><span>Método</span><strong id="identityMethod">—</strong></div>
+        <div class="doom-identity-row"><span>Modo</span><strong id="identityMode">—</strong></div>
+      </div>
+      <div class="doom-identity-session-title">Sessões</div>
+      <div id="identitySessions" class="doom-identity-sessions"></div>
+      <div class="doom-identity-actions"><button id="identityLogout" class="doom-btn" type="button">Encerrar sessão</button><button id="identityRevokeAll" class="doom-tool-reset" type="button">Encerrar todas</button></div>
+      <div class="doom-tool-note">A v1.7 mantém a Chave Doom como compatibilidade de transição; as sessões usam cookie HttpOnly e tokens armazenados apenas por hash no Core.</div>
+    </div>
+    <div id="safetyDrawer" class="doom-safety-drawer" aria-hidden="true">
+      <div class="doom-history-head"><div><strong>Safety & Legal</strong><span id="safetySummary">Carregando estado...</span></div><button id="safetyClose" class="doom-icon-btn" type="button" aria-label="Fechar Safety">×</button></div>
+      <div class="doom-safety-body">
+        <div class="doom-safety-card"><div class="k">Engine</div><div class="v" id="safetyEngineState">ATIVO</div><div class="s">Camada determinística de proteção e classificação.</div></div>
+        <div class="doom-safety-card warning"><div class="k">Break Glass</div><div class="v" id="breakGlassState">NÃO REGISTRADO</div><div class="s" id="breakGlassNote">Autorização temporária; bloqueios absolutos continuam bloqueados.</div></div>
+        <div class="doom-safety-section"><div class="doom-safety-title">Registrar Emergency Override</div><div class="doom-safety-note">A chave é gerada pelo servidor e exibida nesta resposta. O Core guarda somente o hash.</div><button id="registerEmergency" class="doom-btn" type="button">Gerar e registrar chave</button><input id="generatedEmergencyKey" class="doom-input" type="text" readonly placeholder="Chave gerada aparecerá aqui"><div id="emergencyRegisterMessage" class="doom-safety-note"></div></div>
+        <div class="doom-safety-section"><div class="doom-safety-title">Autorizar Break Glass</div><input id="emergencyKeyInput" class="doom-input" type="password" autocomplete="off" placeholder="Chave Emergency Override"><textarea id="emergencyReason" class="doom-input doom-memory-textarea" rows="3" placeholder="Motivo obrigatório da emergência..."></textarea><button id="authorizeEmergency" class="doom-btn" type="button">Autorizar temporariamente</button><div id="emergencyAuthMessage" class="doom-safety-note"></div></div>
+        <div class="doom-safety-section"><div class="doom-safety-title">Revogação</div><button id="revokeEmergency" class="doom-mini-danger" type="button">Revogar todas as autorizações</button></div>
+      </div>
+    </div>
     <div id="memoryDrawer" class="doom-memory-drawer" aria-hidden="true">
       <div class="doom-history-head"><div><strong>Memória</strong><span id="memoryCount">0 memórias ativas</span></div><button id="memoryClose" class="doom-icon-btn" type="button" aria-label="Fechar memória">×</button></div>
       <div class="doom-memory-tools"><input id="memorySearch" class="doom-input" type="search" placeholder="Filtrar memórias" aria-label="Filtrar memórias"><select id="memoryCategory" class="doom-input" aria-label="Categoria"><option value="general">Geral</option><option value="identidade">Identidade</option><option value="educacao">Educação</option><option value="aprendizado">Aprendizado</option><option value="comunicacao">Comunicação</option><option value="analise">Análise</option><option value="planejamento">Planejamento</option><option value="tecnologia">Tecnologia</option><option value="criatividade">Criatividade</option><option value="interesses">Interesses</option><option value="carreira">Carreira</option><option value="pc">PC</option><option value="projeto_doom">Projeto Doom</option><option value="trabalho">Trabalho</option><option value="habilidades">Habilidades</option></select><textarea id="memoryContent" class="doom-input doom-memory-textarea" rows="3" placeholder="Adicionar memória manualmente..."></textarea><button id="addMemory" class="doom-btn" type="button">+ Registrar memória</button></div>
@@ -50,5 +73,5 @@
     <div id="historyBackdrop" class="doom-history-backdrop" aria-hidden="true"></div>
   </div>
 </div>
-<script src="/static/doom-state.js?v=1.6.0"></script>
+<script src="/static/doom-state.js?v=1.8.0"></script>
 </body></html>

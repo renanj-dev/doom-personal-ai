@@ -56,6 +56,19 @@ class Settings(BaseSettings):
     agent_max_steps: int = 8
     agent_max_tool_calls: int = 5
 
+    # Doom Security + Identity v1.7
+    security_session_hours: int = 12
+    security_legacy_api_key: bool = True
+
+    # Doom Safety & Legal Engine v1.8
+    safety_enabled: bool = True
+    safety_jurisdiction: str = "BR"
+    emergency_break_glass_enabled: bool = True
+    emergency_session_minutes: int = 5
+    emergency_max_attempts: int = 5
+    emergency_cooldown_minutes: int = 10
+    emergency_require_reason: bool = True
+
     # Doom Tool Engine 2.0
     tool_timeout_seconds: float = 8.0
     tool_max_retries: int = 1

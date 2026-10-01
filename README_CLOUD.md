@@ -53,3 +53,9 @@ Deep Search is disabled by default and requires a configured web-search provider
 
 ### Agent v1.6
 O Planner / Agent fica desligado por padrão. Use `AGENT_ENABLED=false` no ambiente e ative pelo próprio Doom quando quiser executar tarefas em múltiplas etapas.
+
+
+## Doom v1.7.0 — Security + Identity
+O Core agora registra a identidade proprietária no banco e pode trocar a chave legada por uma sessão autenticada. A sessão usa cookie HttpOnly no navegador e pode ser apresentada como Bearer token por clientes externos. `X-Doom-Key` permanece habilitado para compatibilidade durante a migração.
+
+Novas variáveis: `SECURITY_SESSION_HOURS=12` e `SECURITY_LEGACY_API_KEY=true`.
