@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.8.1 — Interrupt Control
+
+- Added per-request cancellation registry and request IDs.
+- Added `POST /api/chat/cancel`.
+- Added cooperative cancellation checks before/after expensive orchestration stages.
+- Agent can stop between plan steps and records `cancelled`.
+- Added UI button `Interromper` with AbortController + server cancel signal.
+- Added `INTERROMPIDO` semantic state to Forest Core.
+- Documented limitation: non-streaming provider calls already in flight may still finish internally, but their result is not committed to the conversation.
+
+
 ## 1.8.0 — Safety & Legal + Emergency Override
 
 - Adicionado Safety & Legal Engine.

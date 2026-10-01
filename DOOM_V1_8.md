@@ -1,4 +1,4 @@
-# Doom Cloud v1.8.0 — Safety & Legal + Emergency Override
+# Doom Cloud v1.8.1 — Safety & Legal + Emergency Override + Interrupt Control
 
 ## Entregue
 
@@ -32,3 +32,9 @@ A chave aparece uma única vez. Não coloque a chave em código, Git, README ou 
 ## Limite de segurança
 
 O Break Glass não é um bypass universal. Solicitações classificadas como `blocked` permanecem bloqueadas.
+
+## v1.8.1 — Interrupt Control
+
+A interface now exposes an **Interromper** button during active chat requests. Each request receives a request_id and the server maintains a cooperative cancellation registry. Cancelling marks the request immediately; the browser aborts its waiting fetch and the backend checks the cancellation between orchestration stages and Agent steps before committing a final response.
+
+Important: provider calls in this version remain non-streaming. Therefore a provider network call already in progress may still finish internally; the user-facing request is nevertheless interrupted immediately and its result is discarded.

@@ -1,4 +1,4 @@
-# Doom Personal AI v1.8.0
+# Doom Personal AI v1.8.1
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -114,3 +114,7 @@ A v1.7 ainda opera em modo single-user. O isolamento completo de dados por múlt
 ## Doom v1.8.0 — Safety & Legal
 
 A v1.8 adiciona uma camada determinística de Safety & Legal e o Emergency Override / Break Glass com autorização temporária, uso único, motivo obrigatório, auditoria e bloqueios absolutos não ignoráveis. Para registrar a chave via PowerShell: `python scripts\register_emergency_key.py`.
+
+
+## v1.8.1 — Interromper raciocínio
+A interface possui um botão **Interromper** durante uma solicitação. O browser cancela a espera imediatamente e envia um sinal de cancelamento ao Core, que evita persistir uma resposta final depois da interrupção e permite ao Agent parar entre etapas. Como os provedores ainda usam chamadas não-streaming, uma chamada externa que já esteja em andamento pode terminar internamente; o resultado é descartado.

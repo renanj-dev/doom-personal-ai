@@ -5,7 +5,7 @@ import re
 import time
 import uuid
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from .config import get_settings
 from .db import SessionLocal
@@ -236,6 +236,7 @@ def run(
     context_text: str,
     deep_search_allowed: bool,
     provider: str | None = None,
+    cancel_check: Callable[[], bool] | None = None,
 ) -> AgentExecution:
     started = time.perf_counter()
     plan = build_plan(user_message, context_text, deep_search_allowed)
@@ -246,6 +247,10 @@ def run(
     deep_search_sources: list[dict[str, str]] = []
     try:
         for index, step in enumerate(plan, start=1):
+            if cancel_check and cancel_check():
+                _update_step(run_id, step.step_id, "cancelled", error="Execução interrompida pelo usuário.")
+                _update_run(run_id, "cancelled", tool_calls=tool_calls, finished=True)
+                return AgentExecution(run_id, "cancelled", "Raciocínio interrompido.", steps=tuple(executions))
             if index > MAX_PLAN_STEPS:
                 break
             _update_step(run_id, step.step_id, "running")
@@ -297,6 +302,9 @@ def run(
                     ],
                 }
             _update_step(run_id, step.step_id, "completed", output=output, request_id=(output or {}).get("request_id") if isinstance(output, dict) else None)
+            if cancel_check and cancel_check():
+                _update_run(run_id, "cancelled", tool_calls=tool_calls, finished=True)
+                return AgentExecution(run_id, "cancelled", "Raciocínio interrompido.", steps=tuple(executions))
             executions.append({"index": index, "action": step.action, "description": step.description, "status": "completed", "output": output})
             _update_run(run_id, "running", tool_calls=tool_calls)
 

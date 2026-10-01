@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class ChatRequest(BaseModel):
+    request_id: str | None = Field(default=None, min_length=1, max_length=128)
     session_id: str = Field(default="main", min_length=1, max_length=128)
     message: str = Field(min_length=1, max_length=20000)
     # None = use the global Deep Search setting; True/False overrides it for this request.
@@ -28,6 +29,7 @@ class ToolConfirmationOut(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    request_id: str | None = None
     session_id: str
     reply: str
     mode: str = "success"
@@ -50,6 +52,12 @@ class ChatResponse(BaseModel):
     safety_category: str | None = None
     safety_reason: str | None = None
     break_glass_required: bool = False
+    interrupted: bool = False
+
+
+class ChatCancelRequest(BaseModel):
+    request_id: str = Field(min_length=1, max_length=128)
+    session_id: str = Field(default="main", min_length=1, max_length=128)
 
 
 class SafetyStatusOut(BaseModel):

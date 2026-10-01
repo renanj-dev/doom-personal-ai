@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut)
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -23,9 +23,10 @@ from .deep_search import DEEP_SEARCH_ENGINE
 from .agent import run as run_agent, resume_after_confirmation, run_list as agent_run_list
 from .identity import IDENTITY_ENGINE, SESSION_COOKIE_NAME, Principal
 from .safety_legal import SafetyDecision, assess_request, authorize_break_glass, consume_grant, register_break_glass, revoke_all as revoke_all_break_glass, status as safety_status
+from .cancellation import CANCELLATIONS
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.8.0")
+app = FastAPI(title="Doom Personal AI", version="1.8.1")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -581,12 +582,20 @@ def infer_mode(message: str) -> str:
         return "speculation"
     return "thinking"
 
+@app.post("/api/chat/cancel", dependencies=[Depends(auth)])
+def cancel_chat(payload: ChatCancelRequest):
+    cancelled = CANCELLATIONS.cancel(payload.request_id, payload.session_id)
+    return {"ok": True, "request_id": payload.request_id, "session_id": payload.session_id, "cancelled": cancelled}
+
+
 @app.post("/api/chat", response_model=ChatResponse, dependencies=[Depends(auth)])
 def chat(
     payload: ChatRequest,
     x_doom_emergency_grant: Annotated[str | None, Header()] = None,
     db: Session = Depends(get_db),
 ):
+    request_id = payload.request_id or __import__("uuid").uuid4().hex
+    CANCELLATIONS.start(request_id, payload.session_id)
     safety = assess_request(payload.message)
     emergency_authorized = False
 
@@ -597,13 +606,14 @@ def chat(
             "Não posso executar essa solicitação porque ela acionou um bloqueio absoluto do Safety & Legal Engine. "
             "O Emergency Override não pode liberar esse tipo de bloqueio."
         )
-        db.add(Message(session_id=payload.session_id, role="assistant", content=reply))
         from .safety_legal import _log_event
         _log_event(db, event_type="request_blocked", session_id=payload.session_id, decision=safety.decision.value, category=safety.category, detail=safety.reason)
+        db.add(Message(session_id=payload.session_id, role="assistant", content=reply))
         db.commit()
         touch_conversation(db, payload.session_id)
+        CANCELLATIONS.finish(request_id)
         return ChatResponse(
-            session_id=payload.session_id, reply=reply, mode="safety_blocked", brain="safety-engine", task="safety",
+            request_id=request_id, session_id=payload.session_id, reply=reply, mode="safety_blocked", brain="safety-engine", task="safety",
             safety_decision=safety.decision.value, safety_category=safety.category, safety_reason=safety.reason,
             break_glass_required=False,
         )
@@ -624,8 +634,9 @@ def chat(
             _log_event(db, event_type="request_requires_break_glass", session_id=payload.session_id, decision=safety.decision.value, category=safety.category, detail=safety.reason)
             db.commit()
             touch_conversation(db, payload.session_id)
+            CANCELLATIONS.finish(request_id)
             return ChatResponse(
-                session_id=payload.session_id, reply=reply, mode="safety_break_glass", brain="safety-engine", task="safety",
+                request_id=request_id, session_id=payload.session_id, reply=reply, mode="safety_break_glass", brain="safety-engine", task="safety",
                 safety_decision=safety.decision.value, safety_category=safety.category, safety_reason=safety.reason,
                 break_glass_required=True,
             )
@@ -655,6 +666,9 @@ def chat(
     agent_deep_search_query = None
     agent_deep_search_sources = []
     try:
+        if CANCELLATIONS.is_cancelled(request_id):
+            CANCELLATIONS.finish(request_id)
+            return ChatResponse(request_id=request_id, session_id=payload.session_id, reply="Raciocínio interrompido.", mode="interrupted", brain="doom-core", task="interrupt", interrupted=True)
         context_bundle = build_context(db, payload.session_id, payload.message)
         recent = recent_db
         pending = get_pending_proposal(db, payload.session_id)
@@ -707,6 +721,9 @@ def chat(
                 deep_search_used = get_global_deep_search_enabled(db) if payload.deep_search is None else payload.deep_search
                 agent_used = get_global_agent_enabled(db) if payload.agent is None else payload.agent
                 if agent_used:
+                    if CANCELLATIONS.is_cancelled(request_id):
+                        CANCELLATIONS.finish(request_id)
+                        return ChatResponse(request_id=request_id, session_id=payload.session_id, reply="Raciocínio interrompido.", mode="interrupted", brain="doom-agent", task="interrupt", interrupted=True)
                     agent_result = run_agent(
                         user_message=payload.message,
                         session_id=payload.session_id,
@@ -714,6 +731,7 @@ def chat(
                         context_text=context_bundle.memory_text + "\n\n" + (context_bundle.profile_text or ""),
                         deep_search_allowed=deep_search_used,
                         provider=None,
+                        cancel_check=lambda: CANCELLATIONS.is_cancelled(request_id),
                     )
                     reply = agent_result.reply
                     agent_run_id = agent_result.run_id
@@ -723,6 +741,9 @@ def chat(
                     agent_deep_search_sources = list(agent_result.deep_search_sources)
                     route = None
                 else:
+                    if CANCELLATIONS.is_cancelled(request_id):
+                        CANCELLATIONS.finish(request_id)
+                        return ChatResponse(request_id=request_id, session_id=payload.session_id, reply="Raciocínio interrompido.", mode="interrupted", brain="doom-core", task="interrupt", interrupted=True)
                     if deep_search_used:
                         deep_search_result = DEEP_SEARCH_ENGINE.research(payload.message, payload.session_id)
                     reply, route, tool_confirmation = ask_with_cortex(
@@ -734,6 +755,7 @@ def chat(
                         research_text=deep_search_result.context if deep_search_result else None,
                     )
     except Exception as exc:
+        CANCELLATIONS.finish(request_id)
         # Remove the just-added user message only when the provider fails, so a retry is clean.
         db.delete(recent[-1])
         db.commit()
@@ -749,7 +771,9 @@ def chat(
     )
     db.commit()
     touch_conversation(db, payload.session_id)
+    CANCELLATIONS.finish(request_id)
     return ChatResponse(
+        request_id=request_id,
         session_id=payload.session_id,
         reply=reply,
         mode=("agent" if agent_used else ("success" if mode == "thinking" else ("deep_search" if deep_search_used else mode))),
