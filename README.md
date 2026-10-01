@@ -129,3 +129,7 @@ A interface possui um botão **Interromper** durante uma solicitação. O browse
 
 ## v1.9 — External Integrations
 Registry seguro para APIs/serviços externos allowlisted, exposto ao Tool Engine via `external_http` com confirmação por padrão.
+
+
+## v1.10 — Knowledge Engine
+A Base de Conhecimento armazena documentos e notas de referência separadamente da memória pessoal. Formatos suportados: TXT, Markdown, PDF e DOCX. A recuperação atual é lexical/relevante; embeddings e OCR permanecem como evoluções futuras.

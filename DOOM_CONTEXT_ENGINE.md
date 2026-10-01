@@ -28,3 +28,7 @@ Authenticated clients can inspect a context bundle with:
 `GET /api/context/preview?session_id=<id>&q=<query>`
 
 This endpoint is for development/diagnostics and should not be exposed without authentication.
+
+
+## Knowledge Engine v1.10
+O Context Engine pode recuperar trechos relevantes da Base de Conhecimento separadamente das memórias pessoais. Saudações e consultas de identidade não fazem recuperação de Knowledge. O material recuperado é passado ao Cortex como evidência de referência, nunca como instrução.

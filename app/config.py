@@ -76,6 +76,11 @@ class Settings(BaseSettings):
     integrations_max_body_chars: int = 12000
     integrations_max_response_chars: int = 12000
 
+    # Doom Knowledge Engine v1.10
+    knowledge_engine_enabled: bool = True
+    knowledge_max_file_mb: int = 12
+    knowledge_max_context_chars: int = 18000
+
     # Doom Tool Engine 2.0
     tool_timeout_seconds: float = 8.0
     tool_max_retries: int = 1

@@ -81,6 +81,8 @@ def init_db() -> None:
         BreakGlassGrant,
         SafetyEvent,
         ExternalIntegration,
+        KnowledgeDocument,
+        KnowledgeChunk,
     )
 
     Base.metadata.create_all(bind=engine)

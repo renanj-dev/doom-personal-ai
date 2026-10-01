@@ -54,7 +54,7 @@ def _tool_context_messages(history_messages, user_message, response_text, result
     return messages
 
 
-def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message: str, profile_text: str | None = None, session_id: str = 'main', research_text: str | None = None) -> tuple[str, CortexRoute, dict | None]:
+def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message: str, profile_text: str | None = None, session_id: str = 'main', research_text: str | None = None, knowledge_text: str | None = None) -> tuple[str, CortexRoute, dict | None]:
     task, candidates, reason = route_task(user_message)
     if not candidates:
         raise RuntimeError("O Cortex não encontrou nenhum cérebro configurado e disponível.")
@@ -66,7 +66,7 @@ def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message:
             history = list(recent_messages)
             messages = history + [{"role": "user", "content": "CURRENT_USER_REQUEST\n" + user_message}]
             tool_confirmation = None
-            reply = ask_doom(memory_text, messages, provider=provider, profile_text=profile_text, research_text=research_text)
+            reply = ask_doom(memory_text, messages, provider=provider, profile_text=profile_text, research_text=research_text, knowledge_text=knowledge_text)
             for _ in range(2):
                 request = TOOL_ENGINE.parse_request(reply)
                 if not request:
@@ -89,7 +89,7 @@ def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message:
                     reply = result.get('error') or 'A ferramenta não pôde ser executada.'
                     break
                 messages = _tool_context_messages(history, user_message, reply, result)
-                reply = ask_doom(memory_text, messages, provider=provider, profile_text=profile_text, research_text=research_text)
+                reply = ask_doom(memory_text, messages, provider=provider, profile_text=profile_text, research_text=research_text, knowledge_text=knowledge_text)
             return reply, CortexRoute(task, TASK_LABELS.get(task, task.upper()), provider, provider_model(provider), index, reason), tool_confirmation
         except Exception as exc:
             errors.append(f"{provider}: {exc}")

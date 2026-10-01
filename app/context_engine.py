@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from .models import Message
 from .memory_engine import relevant_memories
 from .user_profile import render_profile_for_query
+from .knowledge_engine import KNOWLEDGE_ENGINE
 
 STOPWORDS = {
     "a", "o", "e", "de", "do", "da", "dos", "das", "um", "uma", "uns", "umas",
@@ -51,6 +52,9 @@ class ContextBundle:
     recent_messages: list[dict]
     recalled_messages: list[dict]
     memory_count: int
+    knowledge_text: str
+    knowledge_hits: list[dict]
+    knowledge_count: int
     recent_count: int
     recalled_count: int
     strategy: str
@@ -162,6 +166,8 @@ def build_context(db: Session, session_id: str, query: str) -> ContextBundle:
     # this prevents generic mentions such as the assistant's own name from
     # pulling project memories into a simple conversational turn.
     memories = [] if (_is_greeting(query) or _is_identity_query(query)) else relevant_memories(db, query, limit=6)
+    knowledge_hits = [] if (_is_greeting(query) or _is_identity_query(query)) else KNOWLEDGE_ENGINE.search(db, query, limit=6)
+    knowledge_text = KNOWLEDGE_ENGINE.render_context(knowledge_hits)
     memory_text = "\n".join(f"[{m.category}] {m.content}" for m in memories)
     profile_text = render_profile_for_query(query)
     if _is_greeting(query) or _is_identity_query(query):
@@ -169,7 +175,7 @@ def build_context(db: Session, session_id: str, query: str) -> ContextBundle:
     elif _is_memory_query(query):
         strategy = "turno atual isolado + lembranças do usuário relevantes + memórias relevantes"
     else:
-        strategy = "até 6 mensagens recentes + até 6 lembranças do usuário relevantes + até 6 memórias relevantes"
+        strategy = "até 6 mensagens recentes + lembranças do usuário relevantes + memórias relevantes + conhecimento relevante"
     return ContextBundle(
         profile_text=profile_text,
         memory_text=memory_text,
@@ -179,4 +185,7 @@ def build_context(db: Session, session_id: str, query: str) -> ContextBundle:
         recent_count=len(recent),
         recalled_count=len(recalled),
         strategy=strategy,
+        knowledge_text=knowledge_text,
+        knowledge_hits=[{"document_id": h.document_id, "title": h.title, "source_name": h.source_name, "collection": h.collection, "topic": h.topic, "version": h.version, "chunk_index": h.chunk_index} for h in knowledge_hits],
+        knowledge_count=len(knowledge_hits),
     )

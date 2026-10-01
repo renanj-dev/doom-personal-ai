@@ -147,6 +147,35 @@ class ExternalIntegration(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
+class KnowledgeDocument(Base):
+    __tablename__ = "knowledge_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    title: Mapped[str] = mapped_column(String(220), index=True)
+    source_name: Mapped[str] = mapped_column(String(260), default="")
+    source_type: Mapped[str] = mapped_column(String(32), default="text")
+    mime_type: Mapped[str] = mapped_column(String(120), default="text/plain")
+    collection: Mapped[str] = mapped_column(String(100), default="Geral", index=True)
+    topic: Mapped[str] = mapped_column(String(120), default="", index=True)
+    version: Mapped[str] = mapped_column(String(64), default="1")
+    source_uri: Mapped[str] = mapped_column(String(600), default="")
+    content_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    content: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(24), default="ready", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+class KnowledgeChunk(Base):
+    __tablename__ = "knowledge_chunks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(Integer, index=True)
+    chunk_index: Mapped[int] = mapped_column(Integer, index=True)
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class ToolPermission(Base):
     __tablename__ = "tool_permissions"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)

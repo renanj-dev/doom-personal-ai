@@ -45,3 +45,7 @@ The Cortex never changes Doom's identity or memory. It only chooses which config
 ## Context Engine integration (v1.3)
 
 Before a normal request reaches Cortex routing, Doom builds a focused context bundle from recent messages, relevant older messages (including cross-conversation recall), relevant persistent memories, and a focused user profile. Cortex then selects the provider without owning memory or identity.
+
+
+## Knowledge Engine v1.10
+O Cortex recebe conhecimento recuperado em um bloco separado de memória e histórico. A solicitação atual continua sendo a âncora da conversa.

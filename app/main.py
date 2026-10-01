@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun, ExternalIntegration
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut)
+from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun, ExternalIntegration, KnowledgeDocument
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut, KnowledgeTextCreate, KnowledgeDocumentOut, KnowledgeSourceOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -25,9 +25,10 @@ from .identity import IDENTITY_ENGINE, SESSION_COOKIE_NAME, Principal
 from .safety_legal import SafetyDecision, assess_request, authorize_break_glass, consume_grant, register_break_glass, revoke_all as revoke_all_break_glass, status as safety_status
 from .cancellation import CANCELLATIONS
 from .integrations import INTEGRATION_ENGINE, IntegrationError
+from .knowledge_engine import KNOWLEDGE_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.9.0")
+app = FastAPI(title="Doom Personal AI", version="1.10.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -261,6 +262,80 @@ def test_integration(name: str):
         raise HTTPException(status_code=502, detail=f"Falha ao testar integração: {str(exc)[:500]}") from exc
 
 
+
+@app.get("/api/knowledge", response_model=list[KnowledgeDocumentOut], dependencies=[Depends(auth)])
+def knowledge_list(db: Session = Depends(get_db)):
+    return KNOWLEDGE_ENGINE.list_documents(db)
+
+
+@app.get("/api/knowledge/search", dependencies=[Depends(auth)])
+def knowledge_search(q: str = "", limit: int = 6, db: Session = Depends(get_db)):
+    hits = KNOWLEDGE_ENGINE.search(db, q, limit=limit)
+    return {
+        "query": q,
+        "count": len(hits),
+        "hits": [
+            {
+                "document_id": h.document_id,
+                "title": h.title,
+                "source_name": h.source_name,
+                "collection": h.collection,
+                "topic": h.topic,
+                "version": h.version,
+                "source_uri": h.source_uri,
+                "chunk_index": h.chunk_index,
+                "score": h.score,
+                "content": h.content,
+            }
+            for h in hits
+        ],
+    }
+
+
+@app.get("/api/knowledge/{document_id}", response_model=KnowledgeDocumentOut, dependencies=[Depends(auth)])
+def knowledge_get(document_id: int, db: Session = Depends(get_db)):
+    doc = KNOWLEDGE_ENGINE.get_document(db, document_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Documento de conhecimento não encontrado.")
+    return doc
+
+
+@app.post("/api/knowledge/text", response_model=KnowledgeDocumentOut, dependencies=[Depends(auth)])
+def knowledge_create_text(payload: KnowledgeTextCreate, db: Session = Depends(get_db)):
+    try:
+        return KNOWLEDGE_ENGINE.create_text(db, title=payload.title, content=payload.content, collection=payload.collection, topic=payload.topic, version=payload.version, source_name=payload.source_name, source_uri=payload.source_uri)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/knowledge/upload", response_model=KnowledgeDocumentOut, dependencies=[Depends(auth)])
+async def knowledge_upload(
+    file: UploadFile = File(...),
+    title: str = Form(default=""),
+    collection: str = Form(default="Geral"),
+    topic: str = Form(default=""),
+    version: str = Form(default="1"),
+    source_uri: str = Form(default=""),
+    db: Session = Depends(get_db),
+):
+    data = await file.read()
+    if len(data) > settings.knowledge_max_file_mb * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"Arquivo excede o limite de {settings.knowledge_max_file_mb} MB.")
+    try:
+        return KNOWLEDGE_ENGINE.ingest_file(db, filename=file.filename or "documento", data=data, mime_type=file.content_type or "", title=title or None, collection=collection, topic=topic, version=version, source_uri=source_uri)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Falha ao processar documento: {exc}") from exc
+
+
+@app.delete("/api/knowledge/{document_id}", dependencies=[Depends(auth)])
+def knowledge_delete(document_id: int, db: Session = Depends(get_db)):
+    if not KNOWLEDGE_ENGINE.delete_document(db, document_id):
+        raise HTTPException(status_code=404, detail="Documento de conhecimento não encontrado.")
+    return {"ok": True, "document_id": document_id}
+
+
 @app.get("/api/cortex", dependencies=[Depends(auth)])
 def cortex_status() -> dict:
     providers = configured_providers()
@@ -368,6 +443,8 @@ def context_preview(session_id: str = "main", q: str = "") -> dict:
             "memories_used": bundle.memory_count,
             "recent_count": bundle.recent_count,
             "recalled_count": bundle.recalled_count,
+            "knowledge_used": bundle.knowledge_count,
+            "knowledge": bundle.knowledge_hits,
         }
     finally:
         db.close()
@@ -800,6 +877,7 @@ def chat(
                         profile_text=context_bundle.profile_text,
                         session_id=payload.session_id,
                         research_text=deep_search_result.context if deep_search_result else None,
+                        knowledge_text=context_bundle.knowledge_text,
                     )
     except Exception as exc:
         CANCELLATIONS.finish(request_id)

@@ -10,6 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.db import Base
 from app.models import Message, Memory
+from app.knowledge_engine import KNOWLEDGE_ENGINE
 from app.context_engine import build_context
 from app.llm import _messages
 
@@ -151,6 +152,39 @@ class ContextEngineTests(unittest.TestCase):
                 os.remove(path)
             except FileNotFoundError:
                 pass
+
+    def test_relevant_knowledge_is_separate_from_memory(self):
+        engine, Session, path = self._db()
+        try:
+            with Session() as db:
+                KNOWLEDGE_ENGINE.create_text(
+                    db,
+                    title="Análise Combinatória — Arranjo",
+                    content="No arranjo simples, a ordem importa e os elementos não se repetem.",
+                    collection="Estudos",
+                    topic="Matemática",
+                    version="2026",
+                )
+                db.add(Memory(category="trabalho", content="Currículo para vaga administrativa."))
+                db.commit()
+                bundle = build_context(db, "main", "Como funciona arranjo na análise combinatória?")
+                self.assertGreaterEqual(bundle.knowledge_count, 1)
+                self.assertIn("ordem importa", bundle.knowledge_text)
+                self.assertNotIn("Currículo para vaga administrativa", bundle.knowledge_text)
+        finally:
+            try: os.remove(path)
+            except FileNotFoundError: pass
+
+    def test_greeting_does_not_retrieve_knowledge(self):
+        engine, Session, path = self._db()
+        try:
+            with Session() as db:
+                KNOWLEDGE_ENGINE.create_text(db, title="Matemática", content="Arranjo, combinação e permutação.", collection="Estudos")
+                bundle = build_context(db, "main", "Boa noite Doom")
+                self.assertEqual(bundle.knowledge_count, 0)
+        finally:
+            try: os.remove(path)
+            except FileNotFoundError: pass
 
 
 if __name__ == "__main__":

@@ -59,7 +59,7 @@ def test_startup_toggle_and_chat():
     with TestClient(app) as client:
         h = client.get("/health")
         assert h.status_code == 200
-        assert h.json()["version"] == "1.9.0"
+        assert h.json()["version"] == "1.10.0"
 
         s = client.get("/api/deep-search", headers={"X-Doom-Key": "test-key"})
         assert s.status_code == 200

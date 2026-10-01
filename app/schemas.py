@@ -18,6 +18,17 @@ class DeepSearchSourceOut(BaseModel):
     snippet: str = ""
 
 
+class KnowledgeSourceOut(BaseModel):
+    document_id: int
+    title: str
+    source_name: str
+    collection: str
+    topic: str
+    version: str
+    chunk_index: int
+
+
+
 class ToolConfirmationOut(BaseModel):
     request_id: str | None = None
     tool: str
@@ -53,6 +64,8 @@ class ChatResponse(BaseModel):
     safety_reason: str | None = None
     break_glass_required: bool = False
     interrupted: bool = False
+    knowledge_used: int = 0
+    knowledge_sources: list[KnowledgeSourceOut] = Field(default_factory=list)
 
 
 class ChatCancelRequest(BaseModel):
@@ -252,3 +265,30 @@ class SessionLoginOut(BaseModel):
     identity: IdentityOut
     expires_at: datetime
     access_token: str | None = None
+
+
+class KnowledgeTextCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=220)
+    content: str = Field(min_length=1, max_length=2_000_000)
+    collection: str = Field(default="Geral", min_length=1, max_length=100)
+    topic: str = Field(default="", max_length=120)
+    version: str = Field(default="1", min_length=1, max_length=64)
+    source_name: str = Field(default="texto manual", max_length=260)
+    source_uri: str = Field(default="", max_length=600)
+
+
+class KnowledgeDocumentOut(BaseModel):
+    id: int
+    title: str
+    source_name: str
+    source_type: str
+    mime_type: str
+    collection: str
+    topic: str
+    version: str
+    source_uri: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+
+

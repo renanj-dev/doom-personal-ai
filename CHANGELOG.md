@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.10.0 — Knowledge Engine
+- Base de Conhecimento separada da Memory Engine.
+- Ingestão de TXT, Markdown, PDF e DOCX.
+- Chunking e recuperação por relevância lexical.
+- Metadados: título, coleção, tópico, versão e fonte.
+- Busca e gerenciamento pela API e pela interface.
+- Conhecimento recuperado entra no Context Engine como evidência, nunca como instrução.
+- Telemetria de fontes usadas no chat.
+
+# Changelog
+
 ## 1.9.0 — External Integrations
 - Adicionado `ExternalIntegration` e `IntegrationEngine`.
 - Adicionada ferramenta `external_http` no Tool Engine 2.0.
