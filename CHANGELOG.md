@@ -1,3 +1,10 @@
+
+## 1.8.2 — Context Isolation
+- Current user request is explicitly appended as the final user turn for Cortex calls.
+- Historical cross-conversation recall now uses only user-authored messages.
+- Unrelated memories are no longer inserted merely because they are recent.
+- Greetings, self-introduction and direct memory questions use an isolated recent-turn window.
+- Added context-priority system rules to prevent old answers from overriding the current request.
 # Changelog
 
 ## 1.8.1 — Interrupt Control

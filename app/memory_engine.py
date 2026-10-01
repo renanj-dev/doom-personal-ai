@@ -236,14 +236,7 @@ def relevant_memories(db: Session, query: str, limit: int = 10) -> list[Memory]:
         score = overlap * 2.0 + category_bonus + recency_bonus
         scored.append((score, memory))
     scored.sort(key=lambda item: (item[0], item[1].created_at), reverse=True)
-    selected = [m for score, m in scored if score > 0][:limit]
-    if len(selected) < min(limit, len(memories)):
-        existing = {m.id for m in selected}
-        newest = sorted(memories, key=lambda m: m.created_at, reverse=True)
-        for m in newest:
-            if m.id not in existing:
-                selected.append(m)
-                existing.add(m.id)
-            if len(selected) >= limit:
-                break
-    return selected
+    # Only return memories with real relevance. The previous implementation
+    # filled the remainder with newest memories, which caused unrelated facts
+    # to leak into otherwise independent requests.
+    return [m for score, m in scored if score > 0][:limit]

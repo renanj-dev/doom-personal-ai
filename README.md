@@ -1,4 +1,4 @@
-# Doom Personal AI v1.8.1
+# Doom Personal AI v1.8.2
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.
 
@@ -118,3 +118,10 @@ A v1.8 adiciona uma camada determinística de Safety & Legal e o Emergency Overr
 
 ## v1.8.1 — Interromper raciocínio
 A interface possui um botão **Interromper** durante uma solicitação. O browser cancela a espera imediatamente e envia um sinal de cancelamento ao Core, que evita persistir uma resposta final depois da interrupção e permite ao Agent parar entre etapas. Como os provedores ainda usam chamadas não-streaming, uma chamada externa que já esteja em andamento pode terminar internamente; o resultado é descartado.
+
+## v1.8.2 — Context Isolation
+- Current user request is always sent as the final, explicit user turn.
+- Cross-conversation recall includes only user-authored messages.
+- Relevant memories are no longer backfilled with unrelated recent memories.
+- Greetings, identity questions and memory-recall questions receive an isolated current-turn context window.
+- System prompt explicitly prioritizes the current request over historical context.

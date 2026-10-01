@@ -1,14 +1,9 @@
-"""Doom Context Engine v1.3.
+"""Doom Context Engine v1.8.2.
 
-Builds a compact, relevant context bundle from:
-- current conversation recency
-- older/relevant messages from this and other conversations
-- relevant persistent memories
-- a focused user profile
-
-This is intentionally deterministic and dependency-free for the first semantic
-retrieval layer. A future version can replace the lexical scorer with embeddings
-without changing the public contract.
+Builds a compact context bundle while keeping the current user request
+strictly separate from historical/contextual material. Historical assistant
+answers are not recalled across conversations because they are generated
+content, not durable user facts.
 """
 from __future__ import annotations
 
@@ -19,7 +14,7 @@ from typing import Iterable
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Message, Memory
+from .models import Message
 from .memory_engine import relevant_memories
 from .user_profile import render_profile_for_query
 
@@ -30,6 +25,23 @@ STOPWORDS = {
     "seus", "suas", "isso", "esse", "essa", "estes", "estas", "é", "e", "ser", "ter",
     "tem", "tenho", "mais", "muito", "muita", "também", "tambem", "já", "ja", "ainda",
 }
+
+GREETING_PATTERNS = (
+    r"^bom dia(?:,? doom)?[!,. ]*$",
+    r"^boa tarde(?:,? doom)?[!,. ]*$",
+    r"^boa noite(?:,? doom)?[!,. ]*$",
+    r"^ol[aá](?:,? doom)?[!,. ]*$",
+    r"^oi(?:,? doom)?[!,. ]*$",
+)
+IDENTITY_PATTERNS = (
+    "apresente-se", "se apresente", "quem é você", "quem e voce",
+    "quem você é", "quem voce e", "fale sobre você", "fale sobre voce",
+)
+MEMORY_QUERY_PATTERNS = (
+    "você lembra", "voce lembra", "doom lembra", "lembra de",
+    "o que você lembra", "o que voce lembra", "qual é a sua memória",
+    "qual e a sua memoria", "você se lembra", "voce se lembra",
+)
 
 
 @dataclass(frozen=True)
@@ -58,7 +70,7 @@ def _score(query: str, content: str, role: str) -> float:
     phrase_bonus = 0.0
     q_clean = " ".join((query or "").lower().split())
     c_clean = " ".join((content or "").lower().split())
-    if q_clean and q_clean in c_clean:
+    if q_clean and len(q_clean) >= 8 and q_clean in c_clean:
         phrase_bonus += 5.0
     role_bonus = 0.1 if role == "user" else 0.0
     return overlap * 2.0 + phrase_bonus + role_bonus
@@ -68,7 +80,32 @@ def _to_payload(message: Message) -> dict:
     return {"role": "assistant" if message.role == "assistant" else "user", "content": message.content}
 
 
-def _select_recent(db: Session, session_id: str, limit: int = 12) -> list[Message]:
+def _is_greeting(query: str) -> bool:
+    normalized = " ".join((query or "").strip().lower().split())
+    return any(re.match(pattern, normalized, flags=re.IGNORECASE) for pattern in GREETING_PATTERNS)
+
+
+def _is_identity_query(query: str) -> bool:
+    normalized = " ".join((query or "").strip().lower().split())
+    return any(pattern in normalized for pattern in IDENTITY_PATTERNS)
+
+
+def _is_memory_query(query: str) -> bool:
+    normalized = " ".join((query or "").strip().lower().split())
+    return any(pattern in normalized for pattern in MEMORY_QUERY_PATTERNS)
+
+
+def _recent_limit_for_query(query: str) -> int:
+    # Greetings and identity questions should not be contaminated by old
+    # topical turns. Memory questions also start from the current turn only
+    # and recover prior user facts via explicit relevance recall.
+    if _is_greeting(query) or _is_identity_query(query) or _is_memory_query(query):
+        return 1
+    return 6
+
+
+def _select_recent(db: Session, session_id: str, query: str) -> list[Message]:
+    limit = _recent_limit_for_query(query)
     rows = list(
         db.scalars(
             select(Message)
@@ -81,43 +118,60 @@ def _select_recent(db: Session, session_id: str, limit: int = 12) -> list[Messag
     return rows
 
 
-def _select_recalled(db: Session, session_id: str, query: str, recent: Iterable[Message], limit: int = 8) -> list[Message]:
+def _select_recalled(
+    db: Session,
+    session_id: str,
+    query: str,
+    recent: Iterable[Message],
+    limit: int = 6,
+) -> list[Message]:
     recent_ids = {m.id for m in recent}
-    stmt = select(Message)
+    # Only recall the user's historical statements. Generated assistant
+    # answers are deliberately excluded so an old response cannot become
+    # an accidental instruction or substitute for the current request.
+    stmt = select(Message).where(Message.role == "user")
     if recent_ids:
         stmt = stmt.where(Message.id.not_in(recent_ids))
-    rows = list(db.scalars(stmt.order_by(Message.created_at.desc()).limit(300)).all())
+    rows = list(db.scalars(stmt.order_by(Message.created_at.desc()).limit(500)).all())
     scored: list[tuple[float, Message]] = []
-    for m in rows:
-        # Prefer the current conversation slightly, then use older conversations
-        # as cross-conversation recall.
-        score = _score(query, m.content, m.role)
-        if m.session_id == session_id:
-            score += 1.25
+    for message in rows:
+        score = _score(query, message.content, message.role)
+        if message.session_id == session_id:
+            score += 0.75
+        # Require actual lexical relevance; never fill the bundle with the
+        # newest unrelated messages.
         if score >= 2.1:
-            scored.append((score, m))
+            scored.append((score, message))
     scored.sort(key=lambda item: (item[0], item[1].created_at), reverse=True)
     selected: list[Message] = []
     seen_sessions: dict[str, int] = {}
-    for score, m in scored:
-        # Avoid flooding the context with one repeated message/session.
-        count = seen_sessions.get(m.session_id, 0)
-        if count >= 3:
+    for _, message in scored:
+        count = seen_sessions.get(message.session_id, 0)
+        if count >= 2:
             continue
-        selected.append(m)
-        seen_sessions[m.session_id] = count + 1
+        selected.append(message)
+        seen_sessions[message.session_id] = count + 1
         if len(selected) >= limit:
             break
-    selected.sort(key=lambda m: m.created_at)
+    selected.sort(key=lambda message: message.created_at)
     return selected
 
 
 def build_context(db: Session, session_id: str, query: str) -> ContextBundle:
-    recent = _select_recent(db, session_id, limit=12)
-    recalled = _select_recalled(db, session_id, query, recent, limit=8)
-    memories = relevant_memories(db, query, limit=8)
+    recent = _select_recent(db, session_id, query)
+    recalled = _select_recalled(db, session_id, query, recent, limit=6)
+    # Greetings and identity questions do not need durable memory retrieval;
+    # this prevents generic mentions such as the assistant's own name from
+    # pulling project memories into a simple conversational turn.
+    memories = [] if (_is_greeting(query) or _is_identity_query(query)) else relevant_memories(db, query, limit=6)
     memory_text = "\n".join(f"[{m.category}] {m.content}" for m in memories)
     profile_text = render_profile_for_query(query)
+    if _is_greeting(query) or _is_identity_query(query):
+        strategy = "turno atual isolado + contexto durável mínimo"
+    elif _is_memory_query(query):
+        strategy = "turno atual isolado + lembranças do usuário relevantes + memórias relevantes"
+    else:
+        strategy = "até 6 mensagens recentes + até 6 lembranças do usuário relevantes + até 6 memórias relevantes"
     return ContextBundle(
         profile_text=profile_text,
         memory_text=memory_text,
@@ -126,5 +180,5 @@ def build_context(db: Session, session_id: str, query: str) -> ContextBundle:
         memory_count=len(memories),
         recent_count=len(recent),
         recalled_count=len(recalled),
-        strategy="12 recentes + até 8 lembranças relevantes + até 8 memórias + perfil focado",
+        strategy=strategy,
     )

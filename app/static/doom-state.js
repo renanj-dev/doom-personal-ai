@@ -1,5 +1,5 @@
-// Doom State / UI v1.8.1 — Security, Identity, Context, Memory, Tools, Deep Search and Agent
-const DOOM_MEMORY_ENGINE = { version: '1.8.1' };
+// Doom State / UI v1.8.2 — Security, Identity, Context, Memory, Tools, Deep Search and Agent
+const DOOM_MEMORY_ENGINE = { version: '1.8.2' };
 const DOOM_INTERRUPT = { active: false, requestId: null, controller: null, announced: false };
 const DOOM_DEEP_SEARCH = { enabled: false, available: false };
 const DOOM_AGENT = { enabled: false, maxSteps: 8, maxToolCalls: 5 };

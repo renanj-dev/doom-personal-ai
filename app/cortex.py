@@ -43,29 +43,40 @@ def route_task(message:str):
     reason={"chat":"tarefa geral","study":"tarefa pedagógica","analysis":"tarefa analítica","creation":"tarefa criativa","execution":"tarefa operacional","memory":"tarefa de memória","speculation":"tarefa especulativa"}[task]
     return task,candidates,reason
 
-def _tool_context_messages(memory_text, recent_messages, profile_text, provider, response_text, result):
-    messages=list(recent_messages)
-    messages.append({"role":"assistant","content":response_text})
-    messages.append({"role":"user","content":"DOOM_TOOL_RESULT\nO Tool Engine executou a ferramenta solicitada. Use somente este resultado para responder ao usuário:\n"+__import__('json').dumps(result,ensure_ascii=False)})
+def _tool_context_messages(history_messages, user_message, response_text, result):
+    messages = list(history_messages)
+    messages.append({"role": "user", "content": "CURRENT_USER_REQUEST\n" + user_message})
+    messages.append({"role": "assistant", "content": response_text})
+    messages.append({
+        "role": "user",
+        "content": "DOOM_TOOL_RESULT\nO Tool Engine executou a ferramenta solicitada. Use somente este resultado como evidência para continuar a tarefa atual.\n" + __import__('json').dumps(result, ensure_ascii=False),
+    })
     return messages
 
-def ask_with_cortex(memory_text:str,recent_messages:list[dict],user_message:str,profile_text:str|None=None,session_id:str='main',research_text:str|None=None)->tuple[str,CortexRoute,dict|None]:
-    task,candidates,reason=route_task(user_message)
-    if not candidates: raise RuntimeError("O Cortex não encontrou nenhum cérebro configurado e disponível.")
-    errors=[]
-    for index,provider in enumerate(candidates):
+
+def ask_with_cortex(memory_text: str, recent_messages: list[dict], user_message: str, profile_text: str | None = None, session_id: str = 'main', research_text: str | None = None) -> tuple[str, CortexRoute, dict | None]:
+    task, candidates, reason = route_task(user_message)
+    if not candidates:
+        raise RuntimeError("O Cortex não encontrou nenhum cérebro configurado e disponível.")
+    errors = []
+    for index, provider in enumerate(candidates):
         try:
-            messages=list(recent_messages)
+            # Historical context is support material only. The current request
+            # is injected separately as the final user message.
+            history = list(recent_messages)
+            messages = history + [{"role": "user", "content": "CURRENT_USER_REQUEST\n" + user_message}]
             tool_confirmation = None
-            reply=ask_doom(memory_text,messages,provider=provider,profile_text=profile_text,research_text=research_text)
+            reply = ask_doom(memory_text, messages, provider=provider, profile_text=profile_text, research_text=research_text)
             for _ in range(2):
-                request=TOOL_ENGINE.parse_request(reply)
-                if not request: break
-                if request.get('invalid'): raise RuntimeError(f"O modelo solicitou uma ferramenta inexistente: {request.get('tool')}")
-                result=TOOL_ENGINE.execute(request['tool'],request['args'],session_id,settings.doom_user_name)
+                request = TOOL_ENGINE.parse_request(reply)
+                if not request:
+                    break
+                if request.get('invalid'):
+                    raise RuntimeError(f"O modelo solicitou uma ferramenta inexistente: {request.get('tool')}")
+                result = TOOL_ENGINE.execute(request['tool'], request['args'], session_id, settings.doom_user_name)
                 if result.get('requires_confirmation'):
-                    reply=(f"A ferramenta '{request['tool']}' exige confirmação antes de ser executada. "
-                           "A solicitação foi interrompida por segurança.")
+                    reply = (f"A ferramenta '{request['tool']}' exige confirmação antes de ser executada. "
+                             "A solicitação foi interrompida por segurança.")
                     tool_confirmation = {
                         "request_id": result.get("request_id"),
                         "tool": request["tool"],
@@ -75,11 +86,12 @@ def ask_with_cortex(memory_text:str,recent_messages:list[dict],user_message:str,
                     }
                     break
                 if not result.get('ok'):
-                    reply=result.get('error') or 'A ferramenta não pôde ser executada.'
+                    reply = result.get('error') or 'A ferramenta não pôde ser executada.'
                     break
-                messages=_tool_context_messages(memory_text,messages,profile_text,provider,reply,result)
-                reply=ask_doom(memory_text,messages,provider=provider,profile_text=profile_text,research_text=research_text)
-            return reply,CortexRoute(task,TASK_LABELS.get(task,task.upper()),provider,provider_model(provider),index,reason),tool_confirmation
+                messages = _tool_context_messages(history, user_message, reply, result)
+                reply = ask_doom(memory_text, messages, provider=provider, profile_text=profile_text, research_text=research_text)
+            return reply, CortexRoute(task, TASK_LABELS.get(task, task.upper()), provider, provider_model(provider), index, reason), tool_confirmation
         except Exception as exc:
             errors.append(f"{provider}: {exc}")
-    raise RuntimeError("Todos os cérebros disponíveis falharam. "+' | '.join(errors))
+    raise RuntimeError("Todos os cérebros disponíveis falharam. " + ' | '.join(errors))
+

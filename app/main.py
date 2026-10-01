@@ -26,7 +26,7 @@ from .safety_legal import SafetyDecision, assess_request, authorize_break_glass,
 from .cancellation import CANCELLATIONS
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.8.1")
+app = FastAPI(title="Doom Personal AI", version="1.8.2")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -709,7 +709,8 @@ def chat(
                 mode = "memory"
             else:
                 combined_messages = context_bundle.recent_messages + context_bundle.recalled_messages
-                # De-duplicate exact role/content pairs while preserving recent ordering.
+                # Historical/contextual messages must never replace the current
+                # request. The Cortex receives the current user message separately.
                 seen_pairs = set()
                 compact_messages = []
                 for item in combined_messages:
@@ -718,6 +719,13 @@ def chat(
                         continue
                     seen_pairs.add(pair)
                     compact_messages.append(item)
+                # Remove the just-persisted current user turn from the history
+                # bundle; ask_with_cortex appends it explicitly as the final user turn.
+                for idx in range(len(compact_messages) - 1, -1, -1):
+                    item = compact_messages[idx]
+                    if item.get("role") == "user" and item.get("content", "").strip() == payload.message.strip():
+                        compact_messages.pop(idx)
+                        break
                 deep_search_used = get_global_deep_search_enabled(db) if payload.deep_search is None else payload.deep_search
                 agent_used = get_global_agent_enabled(db) if payload.agent is None else payload.agent
                 if agent_used:
