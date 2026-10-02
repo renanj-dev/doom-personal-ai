@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.orm import Session
 
 from .models import KnowledgeChunk, KnowledgeDocument
@@ -179,8 +179,74 @@ class KnowledgeEngine:
         db.refresh(doc)
         return doc
 
-    def list_documents(self, db: Session, limit: int = 100) -> list[KnowledgeDocument]:
-        return list(db.scalars(select(KnowledgeDocument).order_by(KnowledgeDocument.updated_at.desc()).limit(max(1, min(limit, 200)))).all())
+    def list_documents(
+        self,
+        db: Session,
+        limit: int = 100,
+        *,
+        collection: str | None = None,
+        topic: str | None = None,
+        source_type: str | None = None,
+        query: str | None = None,
+    ) -> list[KnowledgeDocument]:
+        stmt = select(KnowledgeDocument)
+        if collection and collection.strip():
+            stmt = stmt.where(KnowledgeDocument.collection == collection.strip())
+        if topic and topic.strip():
+            stmt = stmt.where(KnowledgeDocument.topic == topic.strip())
+        if source_type and source_type.strip():
+            stmt = stmt.where(KnowledgeDocument.source_type == source_type.strip())
+        if query and query.strip():
+            like = f"%{query.strip()}%"
+            stmt = stmt.where(KnowledgeDocument.title.ilike(like))
+        stmt = stmt.order_by(KnowledgeDocument.updated_at.desc()).limit(max(1, min(limit, 200)))
+        return list(db.scalars(stmt).all())
+
+    def catalog(self, db: Session) -> dict:
+        docs = list(db.scalars(select(KnowledgeDocument).order_by(KnowledgeDocument.updated_at.desc())).all())
+        collections: dict[str, int] = {}
+        topics: dict[str, int] = {}
+        source_types: dict[str, int] = {}
+        total_chars = 0
+        for doc in docs:
+            collections[doc.collection or "Geral"] = collections.get(doc.collection or "Geral", 0) + 1
+            if doc.topic:
+                topics[doc.topic] = topics.get(doc.topic, 0) + 1
+            source_types[doc.source_type or "text"] = source_types.get(doc.source_type or "text", 0) + 1
+            total_chars += len(doc.content or "")
+        return {
+            "document_count": len(docs),
+            "total_characters": total_chars,
+            "collections": [
+                {"name": name, "count": count}
+                for name, count in sorted(collections.items(), key=lambda item: (-item[1], item[0].lower()))
+            ],
+            "topics": [
+                {"name": name, "count": count}
+                for name, count in sorted(topics.items(), key=lambda item: (-item[1], item[0].lower()))
+            ],
+            "source_types": [
+                {"name": name, "count": count}
+                for name, count in sorted(source_types.items(), key=lambda item: (-item[1], item[0].lower()))
+            ],
+        }
+
+    def reindex_document(self, db: Session, document_id: int) -> KnowledgeDocument | None:
+        doc = db.get(KnowledgeDocument, document_id)
+        if not doc:
+            return None
+        db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.document_id == document_id))
+        chunks = _chunk_text(doc.content or "")
+        if not chunks:
+            raise ValueError("O conhecimento não possui conteúdo para indexação.")
+        for idx, chunk in enumerate(chunks):
+            db.add(KnowledgeChunk(document_id=document_id, chunk_index=idx, content=chunk))
+        doc.status = "ready"
+        from datetime import datetime, timezone
+        doc.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(doc)
+        return doc
 
     def get_document(self, db: Session, document_id: int) -> KnowledgeDocument | None:
         return db.get(KnowledgeDocument, document_id)

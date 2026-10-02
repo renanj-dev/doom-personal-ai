@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun, ExternalIntegration, KnowledgeDocument
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut, KnowledgeTextCreate, KnowledgeUpdate, KnowledgeDocumentOut, KnowledgeSourceOut)
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut, KnowledgeTextCreate, KnowledgeUpdate, KnowledgeDocumentOut, KnowledgeDocumentDetailOut, KnowledgeCatalogOut, KnowledgeSourceOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -28,7 +28,7 @@ from .integrations import INTEGRATION_ENGINE, IntegrationError
 from .knowledge_engine import KNOWLEDGE_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.10.2")
+app = FastAPI(title="Doom Personal AI", version="1.11.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -264,8 +264,22 @@ def test_integration(name: str):
 
 
 @app.get("/api/knowledge", response_model=list[KnowledgeDocumentOut], dependencies=[Depends(auth)])
-def knowledge_list(db: Session = Depends(get_db)):
-    return KNOWLEDGE_ENGINE.list_documents(db)
+def knowledge_list(
+    limit: int = 100,
+    collection: str = "",
+    topic: str = "",
+    source_type: str = "",
+    q: str = "",
+    db: Session = Depends(get_db),
+):
+    return KNOWLEDGE_ENGINE.list_documents(
+        db, limit=limit, collection=collection, topic=topic, source_type=source_type, query=q
+    )
+
+
+@app.get("/api/knowledge/catalog", response_model=KnowledgeCatalogOut, dependencies=[Depends(auth)])
+def knowledge_catalog(db: Session = Depends(get_db)):
+    return KNOWLEDGE_ENGINE.catalog(db)
 
 
 @app.get("/api/knowledge/search", dependencies=[Depends(auth)])
@@ -292,7 +306,7 @@ def knowledge_search(q: str = "", limit: int = 6, db: Session = Depends(get_db))
     }
 
 
-@app.get("/api/knowledge/{document_id}", response_model=KnowledgeDocumentOut, dependencies=[Depends(auth)])
+@app.get("/api/knowledge/{document_id}", response_model=KnowledgeDocumentDetailOut, dependencies=[Depends(auth)])
 def knowledge_get(document_id: int, db: Session = Depends(get_db)):
     doc = KNOWLEDGE_ENGINE.get_document(db, document_id)
     if not doc:
@@ -337,6 +351,17 @@ def knowledge_update(document_id: int, payload: KnowledgeUpdate, db: Session = D
             collection=payload.collection, topic=payload.topic, version=payload.version,
             source_uri=payload.source_uri,
         )
+        if not row:
+            raise HTTPException(status_code=404, detail="Documento de conhecimento não encontrado.")
+        return row
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/knowledge/{document_id}/reindex", response_model=KnowledgeDocumentOut, dependencies=[Depends(auth)])
+def knowledge_reindex(document_id: int, db: Session = Depends(get_db)):
+    try:
+        row = KNOWLEDGE_ENGINE.reindex_document(db, document_id)
         if not row:
             raise HTTPException(status_code=404, detail="Documento de conhecimento não encontrado.")
         return row

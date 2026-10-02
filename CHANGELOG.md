@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.0
+- Knowledge Management avançado.
+- Filtros e catálogo da Base de Conhecimento.
+- Reindexação manual.
+- Endpoint de detalhe com conteúdo completo.
+- Interface atualizada para v1.11.0.
+
+# Changelog
+
 ## v1.10.0 — Knowledge Engine
 - Base de Conhecimento separada da Memory Engine.
 - Ingestão de TXT, Markdown, PDF e DOCX.

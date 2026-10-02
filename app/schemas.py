@@ -301,3 +301,15 @@ class KnowledgeDocumentOut(BaseModel):
     updated_at: datetime
 
 
+class KnowledgeDocumentDetailOut(KnowledgeDocumentOut):
+    content: str
+
+
+class KnowledgeCatalogOut(BaseModel):
+    document_count: int
+    total_characters: int
+    collections: list[dict]
+    topics: list[dict]
+    source_types: list[dict]
+
+

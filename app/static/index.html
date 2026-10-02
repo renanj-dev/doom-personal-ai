@@ -8,7 +8,7 @@
       <div class="doom-top-center"><div class="eyebrow">DOOM CORTEX</div><div class="status-name" id="modeNote">ONLINE</div></div>
       <div class="doom-actions"><button id="safetyBtn" class="doom-icon-btn" type="button" aria-label="Abrir Safety & Legal">⚿</button><button id="identityBtn" class="doom-icon-btn" type="button" aria-label="Abrir identidade">♙</button><button id="memoryBtn" class="doom-icon-btn" type="button" aria-label="Abrir memória">◈</button><button id="deepSearchBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Deep Search">⌕</button><button id="agentBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Agent">A</button><button id="toolBtn" class="doom-icon-btn" type="button" aria-label="Abrir ferramentas">⚙</button><button id="integrationBtn" class="doom-icon-btn" type="button" aria-label="Abrir integrações externas">↔</button><button id="knowledgeBtn" class="doom-icon-btn" type="button" aria-label="Abrir base de conhecimento">▤</button><button id="historyBtn" class="doom-icon-btn" type="button" aria-label="Abrir histórico">☰</button><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div>
     </header>
-    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.9.0</div></div>
+    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.11.0</div></div>
     <main class="doom-layout">
       <aside class="doom-panel doom-side left" aria-label="Cortex">
         <h2>Cortex</h2>
@@ -96,6 +96,16 @@
         <div id="knowledgeMessage" class="doom-safety-note"></div>
       </div>
       <div class="doom-knowledge-search"><input id="knowledgeSearch" class="doom-input" type="search" placeholder="Buscar no conhecimento"><div id="knowledgeSearchResults"></div></div>
+      <div class="doom-knowledge-management">
+        <div class="doom-knowledge-stats"><span id="knowledgeStatsDocs">0 documentos</span><span id="knowledgeStatsChars">0 caracteres</span><span id="knowledgeStatsCollections">0 coleções</span></div>
+        <div class="doom-knowledge-filters">
+          <select id="knowledgeFilterCollection" class="doom-input" aria-label="Filtrar por coleção"><option value="">Todas as coleções</option></select>
+          <input id="knowledgeFilterTopic" class="doom-input" placeholder="Filtrar por tópico">
+          <select id="knowledgeFilterType" class="doom-input" aria-label="Filtrar por tipo"><option value="">Todos os tipos</option><option value="text">Texto</option><option value="pdf">PDF</option><option value="docx">DOCX</option></select>
+          <button id="knowledgeRefresh" class="doom-tool-reset" type="button">Atualizar</button>
+        </div>
+        <div class="doom-knowledge-filter-note" id="knowledgeFilterNote">Mostrando todos os conhecimentos.</div>
+      </div>
       <div id="knowledgeList" class="doom-history-list"></div>
       <div id="knowledgeEditor" class="doom-knowledge-editor" hidden>
         <div class="doom-history-head"><div><strong>Editar conhecimento</strong><span id="knowledgeEditorId"></span></div><button id="knowledgeEditorClose" class="doom-icon-btn" type="button" aria-label="Fechar editor">×</button></div>
@@ -117,5 +127,5 @@
     <div id="historyBackdrop" class="doom-history-backdrop" aria-hidden="true"></div>
   </div>
 </div>
-<script src="/static/doom-state.js?v=1.10.0"></script>
+<script src="/static/doom-state.js?v=1.11.0"></script>
 </body></html>
