@@ -40,6 +40,18 @@ class UserSession(Base):
     user_agent: Mapped[str] = mapped_column(String(300), default="")
 
 
+class GoogleIdentity(Base):
+    __tablename__ = "doom_google_identities"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    google_sub: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    user_id: Mapped[str] = mapped_column(String(64), index=True)
+    email: Mapped[str] = mapped_column(String(320), default="")
+    display_name: Mapped[str] = mapped_column(String(160), default="")
+    picture_url: Mapped[str] = mapped_column(String(1000), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
 class Message(Base):
     __tablename__ = "messages"
 

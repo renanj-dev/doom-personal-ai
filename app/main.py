@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
-from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun, ExternalIntegration, KnowledgeDocument
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut, KnowledgeTextCreate, KnowledgeUpdate, KnowledgeDocumentOut, KnowledgeDocumentDetailOut, KnowledgeCatalogOut, KnowledgeSourceOut)
+from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun, ExternalIntegration, KnowledgeDocument, GoogleIdentity
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut, KnowledgeTextCreate, KnowledgeUpdate, KnowledgeDocumentOut, KnowledgeDocumentDetailOut, KnowledgeCatalogOut, KnowledgeSourceOut, GoogleTokenRequest, GoogleConfigOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -28,7 +28,7 @@ from .integrations import INTEGRATION_ENGINE, IntegrationError
 from .knowledge_engine import KNOWLEDGE_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.11.0")
+app = FastAPI(title="Doom Personal AI", version="1.12.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -129,6 +129,45 @@ def auth(
 @app.get("/health")
 def health() -> dict:
     return {"status": "online", "name": "Doom", "version": app.version}
+
+@app.get("/api/auth/google/config", response_model=GoogleConfigOut)
+def google_auth_config(request: Request):
+    linked = False
+    email = display_name = picture_url = ""
+    try:
+        principal = auth(request)
+        info = IDENTITY_ENGINE.google_identity(principal.user_id)
+        if info:
+            linked = True; email = info["email"]; display_name = info["display_name"]; picture_url = info["picture_url"]
+    except HTTPException:
+        pass
+    return GoogleConfigOut(enabled=bool(settings.google_login_enabled and settings.google_client_id), client_id=settings.google_client_id if settings.google_login_enabled else "", linked=linked, email=email, display_name=display_name, picture_url=picture_url)
+
+
+@app.post("/api/auth/google/link")
+def google_auth_link(payload: GoogleTokenRequest, principal: Principal = Depends(auth)):
+    try:
+        return IDENTITY_ENGINE.link_google_identity(payload.id_token, principal)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/auth/google/session", response_model=SessionLoginOut)
+def google_auth_session(payload: GoogleTokenRequest, request: Request, response: Response):
+    try:
+        created = IDENTITY_ENGINE.create_session_from_google(payload.id_token, request.headers.get("user-agent"))
+    except (ValueError, LookupError) as exc:
+        raise HTTPException(status_code=401, detail=str(exc)) from exc
+    token, principal, expires_at = created
+    secure = request.url.scheme.lower() == "https"
+    response.set_cookie(key=SESSION_COOKIE_NAME, value=token, max_age=max(1, settings.security_session_hours) * 3600, expires=expires_at, httponly=True, secure=secure, samesite="lax", path="/")
+    response.headers["Cache-Control"] = "no-store"
+    return SessionLoginOut(authenticated=True, identity=IdentityOut(**IDENTITY_ENGINE.me(principal)), expires_at=expires_at, access_token=None)
+
+
+@app.delete("/api/auth/google")
+def google_auth_unlink(principal: Principal = Depends(auth)):
+    return {"ok": True, "unlinked": IDENTITY_ENGINE.unlink_google_identity(principal)}
 
 
 @app.post("/api/auth/session", response_model=SessionLoginOut)

@@ -267,6 +267,19 @@ class SessionLoginOut(BaseModel):
     access_token: str | None = None
 
 
+class GoogleTokenRequest(BaseModel):
+    id_token: str = Field(min_length=20, max_length=12000)
+
+
+class GoogleConfigOut(BaseModel):
+    enabled: bool
+    client_id: str = ""
+    linked: bool = False
+    email: str = ""
+    display_name: str = ""
+    picture_url: str = ""
+
+
 class KnowledgeTextCreate(BaseModel):
     title: str = Field(min_length=1, max_length=220)
     content: str = Field(min_length=1, max_length=2_000_000)

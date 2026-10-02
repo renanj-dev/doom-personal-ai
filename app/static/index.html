@@ -8,7 +8,7 @@
       <div class="doom-top-center"><div class="eyebrow">DOOM CORTEX</div><div class="status-name" id="modeNote">ONLINE</div></div>
       <div class="doom-actions"><button id="safetyBtn" class="doom-icon-btn" type="button" aria-label="Abrir Safety & Legal">⚿</button><button id="identityBtn" class="doom-icon-btn" type="button" aria-label="Abrir identidade">♙</button><button id="memoryBtn" class="doom-icon-btn" type="button" aria-label="Abrir memória">◈</button><button id="deepSearchBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Deep Search">⌕</button><button id="agentBtn" class="doom-icon-btn" type="button" aria-label="Ativar ou desativar Agent">A</button><button id="toolBtn" class="doom-icon-btn" type="button" aria-label="Abrir ferramentas">⚙</button><button id="integrationBtn" class="doom-icon-btn" type="button" aria-label="Abrir integrações externas">↔</button><button id="knowledgeBtn" class="doom-icon-btn" type="button" aria-label="Abrir base de conhecimento">▤</button><button id="historyBtn" class="doom-icon-btn" type="button" aria-label="Abrir histórico">☰</button><button id="themeBtn" class="doom-icon-btn" aria-label="Alternar tema">☼</button><a class="doom-icon-btn" href="/docs" target="_blank" rel="noreferrer" aria-label="Abrir documentação">⌘</a></div>
     </header>
-    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.11.0</div></div>
+    <div class="doom-ribbon"><div class="doom-state" role="status" aria-live="polite"><span id="stateDot" class="doom-dot"></span><span id="stateLabel">ONLINE</span></div><div class="doom-runes" aria-label="Runas de estado"><span class="doom-rune">◈</span><span class="doom-rune">◇</span><span class="doom-rune">△</span><span class="doom-rune">○</span><span class="doom-rune">✦</span><span class="doom-rune">⌁</span><span class="doom-rune">⌘</span><span class="doom-rune">✧</span><span class="doom-rune">▶</span><span class="doom-rune">▣</span><span class="doom-rune">✎</span><span class="doom-rune">⌇</span><span class="doom-rune">?</span></div><div class="micro">FOREST CORE · v1.12.0</div></div>
     <main class="doom-layout">
       <aside class="doom-panel doom-side left" aria-label="Cortex">
         <h2>Cortex</h2>
@@ -52,8 +52,15 @@
       </div>
       <div class="doom-identity-session-title">Sessões</div>
       <div id="identitySessions" class="doom-identity-sessions"></div>
+      <div class="doom-identity-google">
+        <div class="doom-identity-session-title">Conta Google</div>
+        <div id="googleIdentityNote" class="doom-tool-note">Configure o Google Login no servidor para ativar este recurso.</div>
+        <div id="googleLoginButton" class="doom-google-button"></div>
+        <div id="googleLinkArea" hidden><div id="googleLinkButton" class="doom-google-button"></div><button id="googleUnlink" class="doom-tool-reset" type="button">Desvincular Google</button></div>
+        <div id="googleAuthMessage" class="doom-safety-note"></div>
+      </div>
       <div class="doom-identity-actions"><button id="identityLogout" class="doom-btn" type="button">Encerrar sessão</button><button id="identityRevokeAll" class="doom-tool-reset" type="button">Encerrar todas</button></div>
-      <div class="doom-tool-note">A v1.7 mantém a Chave Doom como compatibilidade de transição; as sessões usam cookie HttpOnly e tokens armazenados apenas por hash no Core.</div>
+      <div class="doom-tool-note">A v1.12 adiciona Google como provedor opcional. A Chave Doom continua disponível como compatibilidade de transição; sessões usam cookie HttpOnly.</div>
     </div>
     <div id="safetyDrawer" class="doom-safety-drawer" aria-hidden="true">
       <div class="doom-history-head"><div><strong>Safety & Legal</strong><span id="safetySummary">Carregando estado...</span></div><button id="safetyClose" class="doom-icon-btn" type="button" aria-label="Fechar Safety">×</button></div>
@@ -127,5 +134,6 @@
     <div id="historyBackdrop" class="doom-history-backdrop" aria-hidden="true"></div>
   </div>
 </div>
-<script src="/static/doom-state.js?v=1.11.0"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="/static/doom-state.js?v=1.12.0"></script>
 </body></html>

@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 import hashlib
 import secrets
+import jwt
+
 import uuid
 
 from sqlalchemy import select
 from .config import get_settings
 from .db import SessionLocal
-from .models import UserIdentity, ApiKeyRecord, UserSession
+from .models import UserIdentity, ApiKeyRecord, UserSession, GoogleIdentity
 
 settings = get_settings()
 
@@ -33,6 +35,55 @@ def _user_public(row: UserIdentity) -> dict:
         "created_at": row.created_at,
         "updated_at": row.updated_at,
     }
+
+
+GOOGLE_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
+GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+
+def _google_client_configured() -> bool:
+    return bool(settings.google_login_enabled and settings.google_client_id.strip())
+
+def verify_google_id_token(token: str) -> dict:
+    if not _google_client_configured():
+        raise ValueError("Login com Google não está configurado no servidor.")
+    try:
+        header = jwt.get_unverified_header(token)
+        alg = header.get("alg")
+        if alg != "RS256":
+            raise ValueError("Algoritmo do token Google não permitido.")
+        jwks = jwt.PyJWKClient(GOOGLE_JWKS_URL, cache_jwk_set=True)
+        signing_key = jwks.get_signing_key_from_jwt(token)
+        payload = jwt.decode(
+            token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=settings.google_client_id.strip(),
+            issuer=GOOGLE_ISSUERS,
+            options={"require": ["sub", "aud", "iss", "exp"]},
+        )
+    except Exception as exc:
+        raise ValueError("Token de identidade do Google inválido ou expirado.") from exc
+    if not payload.get("sub"):
+        raise ValueError("Token Google sem identificador estável.")
+    if payload.get("email") and payload.get("email_verified") is False:
+        raise ValueError("A identidade do Google não possui e-mail verificado.")
+    return payload
+
+
+def _new_session(db, principal: "Principal", user_agent: str | None) -> tuple[str, "Principal", datetime]:
+    raw = "dsess_" + secrets.token_urlsafe(48)
+    now = _now()
+    expires = now + timedelta(hours=max(1, settings.security_session_hours))
+    db.add(UserSession(
+        session_id=f"sess_{uuid.uuid4().hex}",
+        token_hash=_hash_secret(raw),
+        user_id=principal.user_id,
+        created_at=now,
+        expires_at=expires,
+        revoked_at=None,
+        user_agent=(user_agent or "")[:300],
+    ))
+    return raw, Principal(principal.user_id, principal.username, principal.display_name, "session"), expires
 
 
 @dataclass(frozen=True)
@@ -110,21 +161,59 @@ class IdentityEngine:
         principal = self.authenticate_api_key(credential)
         if principal is None:
             return None
-        raw = "dsess_" + secrets.token_urlsafe(48)
-        now = _now()
-        expires = now + timedelta(hours=max(1, settings.security_session_hours))
         with SessionLocal() as db:
-            db.add(UserSession(
-                session_id=f"sess_{uuid.uuid4().hex}",
-                token_hash=_hash_secret(raw),
-                user_id=principal.user_id,
-                created_at=now,
-                expires_at=expires,
-                revoked_at=None,
-                user_agent=(user_agent or "")[:300],
-            ))
+            result = _new_session(db, principal, user_agent)
             db.commit()
-        return raw, Principal(principal.user_id, principal.username, principal.display_name, "session"), expires
+            return result
+
+    def link_google_identity(self, token: str, principal: Principal) -> dict:
+        payload = verify_google_id_token(token)
+        google_sub = str(payload["sub"])
+        email = str(payload.get("email") or "")[:320]
+        display_name = str(payload.get("name") or email or principal.display_name)[:160]
+        picture_url = str(payload.get("picture") or "")[:1000]
+        now = _now()
+        with SessionLocal() as db:
+            row = db.scalar(select(GoogleIdentity).where(GoogleIdentity.google_sub == google_sub))
+            if row is not None and row.user_id != principal.user_id:
+                raise ValueError("Esta conta Google já está vinculada a outra identidade Doom.")
+            if row is None:
+                row = GoogleIdentity(google_sub=google_sub, user_id=principal.user_id, email=email, display_name=display_name, picture_url=picture_url, created_at=now, updated_at=now)
+                db.add(row)
+            else:
+                row.email=email; row.display_name=display_name; row.picture_url=picture_url; row.updated_at=now
+            db.commit()
+            return {"linked": True, "google_sub": google_sub, "email": email, "display_name": display_name, "picture_url": picture_url}
+
+    def create_session_from_google(self, token: str, user_agent: str | None = None) -> tuple[str, Principal, datetime] | None:
+        payload = verify_google_id_token(token)
+        google_sub = str(payload["sub"])
+        with SessionLocal() as db:
+            row = db.scalar(select(GoogleIdentity).where(GoogleIdentity.google_sub == google_sub))
+            if row is None:
+                raise LookupError("Esta conta Google ainda não está vinculada ao Doom. Entre com sua Chave Doom e use 'Vincular Google'.")
+            user = db.scalar(select(UserIdentity).where(UserIdentity.user_id == row.user_id, UserIdentity.active.is_(True)))
+            if user is None:
+                raise LookupError("A identidade Doom vinculada a esta conta não está ativa.")
+            result = _new_session(db, Principal(user.user_id, user.username, user.display_name, "google"), user_agent)
+            db.commit()
+            return result
+
+    def google_identity(self, user_id: str) -> dict | None:
+        with SessionLocal() as db:
+            row = db.scalar(select(GoogleIdentity).where(GoogleIdentity.user_id == user_id))
+            if row is None:
+                return None
+            return {"linked": True, "google_sub": row.google_sub, "email": row.email, "display_name": row.display_name, "picture_url": row.picture_url, "created_at": row.created_at, "updated_at": row.updated_at}
+
+    def unlink_google_identity(self, principal: Principal) -> bool:
+        with SessionLocal() as db:
+            row = db.scalar(select(GoogleIdentity).where(GoogleIdentity.user_id == principal.user_id))
+            if row is None:
+                return False
+            db.delete(row)
+            db.commit()
+            return True
 
     def authenticate_session(self, token: str | None) -> Principal | None:
         if not token:

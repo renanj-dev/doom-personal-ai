@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     security_session_hours: int = 12
     security_legacy_api_key: bool = True
 
+    # Doom Google Identity v1.12
+    google_login_enabled: bool = False
+    google_client_id: str = ""
+
     # Doom Safety & Legal Engine v1.8
     safety_enabled: bool = True
     safety_jurisdiction: str = "BR"

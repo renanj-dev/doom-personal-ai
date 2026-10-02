@@ -152,3 +152,11 @@ v1.5.0
 - Reindexação automática dos chunks após edição.
 - Busca e exclusão mantidas.
 - 39 testes passando.
+
+## v1.12.0
+- Google Identity Provider added to Doom Identity Engine.
+- Google identity link/unlink persisted by stable Google `sub`.
+- Google ID token validation for signature, issuer, audience and expiration.
+- HttpOnly Doom session created after Google login.
+- Optional Google Sign-In UI.
+- Interface version updated to v1.12.0.

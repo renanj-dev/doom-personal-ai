@@ -1,3 +1,4 @@
+from pathlib import Path
 from collections.abc import Generator
 
 from sqlalchemy import create_engine, inspect, text
@@ -12,6 +13,12 @@ class Base(DeclarativeBase):
 
 settings = get_settings()
 database_url = settings.database_url.strip()
+
+# Local SQLite: create the parent directory automatically on first run.
+if database_url.startswith("sqlite:///"):
+    sqlite_path = Path(database_url[len("sqlite:///"):]).expanduser()
+    if sqlite_path.parent and str(sqlite_path.parent) not in (".", ""):
+        sqlite_path.parent.mkdir(parents=True, exist_ok=True)
 
 # SQLAlchemy's psycopg v3 dialect is explicit here so the same URL works locally and in cloud.
 if database_url.startswith("postgresql://"):
@@ -77,6 +84,7 @@ def init_db() -> None:
         UserIdentity,
         ApiKeyRecord,
         UserSession,
+        GoogleIdentity,
         BreakGlassCredential,
         BreakGlassGrant,
         SafetyEvent,
