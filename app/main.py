@@ -26,9 +26,10 @@ from .safety_legal import SafetyDecision, assess_request, authorize_break_glass,
 from .cancellation import CANCELLATIONS
 from .integrations import INTEGRATION_ENGINE, IntegrationError
 from .knowledge_engine import KNOWLEDGE_ENGINE
+from .multimodal import analyze_image, status as get_multimodal_status, VisionError, validate_image
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.12.0")
+app = FastAPI(title="Doom Personal AI", version="1.13.0")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -413,6 +414,52 @@ def knowledge_delete(document_id: int, db: Session = Depends(get_db)):
     if not KNOWLEDGE_ENGINE.delete_document(db, document_id):
         raise HTTPException(status_code=404, detail="Documento de conhecimento não encontrado.")
     return {"ok": True, "document_id": document_id}
+
+
+@app.get("/api/multimodal/status", dependencies=[Depends(auth)])
+def multimodal_status_route() -> dict:
+    return get_multimodal_status()
+
+
+@app.post("/api/chat/vision", response_model=ChatResponse, dependencies=[Depends(auth)])
+async def vision_chat(
+    message: str = Form(default="Analise esta imagem e explique o que é relevante para mim."),
+    session_id: str = Form(default="main"),
+    request_id: str = Form(default=""),
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    rid = request_id.strip() or __import__("uuid").uuid4().hex
+    CANCELLATIONS.start(rid, session_id)
+    safety = assess_request(message)
+    if safety.decision == SafetyDecision.BLOCKED:
+        reply = "Não posso executar essa solicitação porque ela acionou um bloqueio absoluto do Safety & Legal Engine."
+        CANCELLATIONS.finish(rid)
+        return ChatResponse(request_id=rid, session_id=session_id, reply=reply, mode="safety_blocked", brain="safety-engine", task="safety", safety_decision=safety.decision.value, safety_category=safety.category, safety_reason=safety.reason)
+    try:
+        data = await image.read()
+        mime = validate_image(data, image.content_type or "", image.filename or "")
+        bundle = build_context(db, session_id, message)
+        if CANCELLATIONS.is_cancelled(rid):
+            return ChatResponse(request_id=rid, session_id=session_id, reply="Raciocínio interrompido.", mode="interrupted", brain="doom-core", task="interrupt", interrupted=True)
+        context_text = (bundle.memory_text or "") + "\n\n" + (bundle.profile_text or "")
+        result = analyze_image(data, mime, message, context_text=context_text, knowledge_text=bundle.knowledge_text)
+        if CANCELLATIONS.is_cancelled(rid):
+            return ChatResponse(request_id=rid, session_id=session_id, reply="Raciocínio interrompido.", mode="interrupted", brain="doom-vision", task="interrupt", interrupted=True)
+        get_or_create_conversation(db, session_id, message)
+        db.add(Message(session_id=session_id, role="user", content=message.strip() + " [imagem anexada]"))
+        db.add(Message(session_id=session_id, role="assistant", content=result.reply))
+        db.commit(); touch_conversation(db, session_id)
+        return ChatResponse(
+            request_id=rid, session_id=session_id, reply=result.reply, mode="vision", brain="doom-vision", task="analysis",
+            context_strategy=bundle.strategy, context_recent=bundle.recent_count, context_recalled=bundle.recalled_count,
+            memories_used=bundle.memory_count, knowledge_used=bundle.knowledge_count,
+            knowledge_sources=bundle.knowledge_hits, vision_used=True, vision_provider=result.provider, vision_model=result.model,
+        )
+    except VisionError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    finally:
+        CANCELLATIONS.finish(rid)
 
 
 @app.get("/api/cortex", dependencies=[Depends(auth)])

@@ -64,6 +64,13 @@ class Settings(BaseSettings):
     google_login_enabled: bool = False
     google_client_id: str = ""
 
+    # Doom Multimodal v1.13
+    multimodal_enabled: bool = True
+    vision_max_file_mb: int = 10
+    openai_vision_model: str | None = None
+    openrouter_vision_model: str | None = None
+    ollama_vision_model: str | None = None
+
     # Doom Safety & Legal Engine v1.8
     safety_enabled: bool = True
     safety_jurisdiction: str = "BR"

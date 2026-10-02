@@ -160,3 +160,13 @@ v1.5.0
 - HttpOnly Doom session created after Google login.
 - Optional Google Sign-In UI.
 - Interface version updated to v1.12.0.
+
+
+## v1.13.0
+- Doom Multimodal: visão + voz em uma única versão.
+- Vision API para análise de imagens com OpenAI, OpenRouter ou Ollama conforme configuração.
+- Entrada de voz por reconhecimento nativo do navegador.
+- Saída de voz por Speech Synthesis do navegador.
+- Anexo, pré-visualização e remoção de imagens na interface.
+- Interface, telemetria e estado visual atualizados para v1.13.0.
+- Imagens não são persistidas pelo Doom após a análise.

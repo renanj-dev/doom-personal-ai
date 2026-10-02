@@ -66,6 +66,9 @@ class ChatResponse(BaseModel):
     interrupted: bool = False
     knowledge_used: int = 0
     knowledge_sources: list[KnowledgeSourceOut] = Field(default_factory=list)
+    vision_used: bool = False
+    vision_provider: str | None = None
+    vision_model: str | None = None
 
 
 class ChatCancelRequest(BaseModel):

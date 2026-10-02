@@ -24,7 +24,7 @@ def test_identity_bootstrap_and_cookie_session():
     with TestClient(app) as client:
         h = client.get("/health")
         assert h.status_code == 200
-        assert h.json()["version"] == "1.12.0"
+        assert h.json()["version"] == "1.13.0"
 
         unauth = client.get("/api/auth/me")
         assert unauth.status_code == 401
