@@ -28,7 +28,7 @@ from .integrations import INTEGRATION_ENGINE, IntegrationError
 from .knowledge_engine import KNOWLEDGE_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.10.1")
+app = FastAPI(title="Doom Personal AI", version="1.10.2")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
