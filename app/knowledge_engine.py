@@ -185,6 +185,47 @@ class KnowledgeEngine:
     def get_document(self, db: Session, document_id: int) -> KnowledgeDocument | None:
         return db.get(KnowledgeDocument, document_id)
 
+    def update_document(
+        self,
+        db: Session,
+        document_id: int,
+        *,
+        title: str,
+        content: str,
+        collection: str = "Geral",
+        topic: str = "",
+        version: str = "1",
+        source_uri: str = "",
+    ) -> KnowledgeDocument | None:
+        doc = db.get(KnowledgeDocument, document_id)
+        if not doc:
+            return None
+        clean = re.sub(r"\n{3,}", "\n\n", (content or "").strip())
+        if not clean:
+            raise ValueError("O conteúdo do conhecimento está vazio.")
+        if len(clean) > MAX_TEXT_CHARS:
+            raise ValueError("O conteúdo excede o limite de 2 milhões de caracteres.")
+        content_hash = hashlib.sha256(clean.encode("utf-8")).hexdigest()
+        duplicate = db.scalar(select(KnowledgeDocument).where(KnowledgeDocument.content_hash == content_hash, KnowledgeDocument.id != document_id))
+        if duplicate:
+            raise ValueError("Outro documento já possui exatamente este conteúdo.")
+        doc.title = title.strip()[:220]
+        doc.content = clean
+        doc.collection = collection.strip()[:100] or "Geral"
+        doc.topic = topic.strip()[:120]
+        doc.version = version.strip()[:64] or "1"
+        doc.source_uri = source_uri.strip()[:600]
+        doc.content_hash = content_hash
+        doc.status = "ready"
+        from datetime import datetime, timezone
+        doc.updated_at = datetime.now(timezone.utc)
+        db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.document_id == document_id))
+        for idx, chunk in enumerate(_chunk_text(clean)):
+            db.add(KnowledgeChunk(document_id=document_id, chunk_index=idx, content=chunk))
+        db.commit()
+        db.refresh(doc)
+        return doc
+
     def delete_document(self, db: Session, document_id: int) -> bool:
         doc = db.get(KnowledgeDocument, document_id)
         if not doc:

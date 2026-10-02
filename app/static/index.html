@@ -97,6 +97,17 @@
       </div>
       <div class="doom-knowledge-search"><input id="knowledgeSearch" class="doom-input" type="search" placeholder="Buscar no conhecimento"><div id="knowledgeSearchResults"></div></div>
       <div id="knowledgeList" class="doom-history-list"></div>
+      <div id="knowledgeEditor" class="doom-knowledge-editor" hidden>
+        <div class="doom-history-head"><div><strong>Editar conhecimento</strong><span id="knowledgeEditorId"></span></div><button id="knowledgeEditorClose" class="doom-icon-btn" type="button" aria-label="Fechar editor">×</button></div>
+        <input id="knowledgeEditTitle" class="doom-input" placeholder="Título">
+        <input id="knowledgeEditCollection" class="doom-input" placeholder="Coleção">
+        <input id="knowledgeEditTopic" class="doom-input" placeholder="Tópico">
+        <input id="knowledgeEditVersion" class="doom-input" placeholder="Versão">
+        <input id="knowledgeEditUri" class="doom-input" placeholder="Fonte/URL opcional">
+        <textarea id="knowledgeEditContent" class="doom-input doom-knowledge-edit-content" rows="12" placeholder="Conteúdo"></textarea>
+        <div class="doom-knowledge-editor-actions"><button id="knowledgeEditCancel" class="doom-tool-reset" type="button">Cancelar</button><button id="knowledgeEditSave" class="doom-btn" type="button">Salvar alterações</button></div>
+        <div id="knowledgeEditMessage" class="doom-safety-note"></div>
+      </div>
     </div>
     <div id="memoryDrawer" class="doom-memory-drawer" aria-hidden="true">
       <div class="doom-history-head"><div><strong>Memória</strong><span id="memoryCount">0 memórias ativas</span></div><button id="memoryClose" class="doom-icon-btn" type="button" aria-label="Fechar memória">×</button></div>

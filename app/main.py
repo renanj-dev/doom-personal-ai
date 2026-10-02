@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import SessionLocal, get_db, init_db
 from .models import Conversation, Message, Memory, MemoryProposal, ToolPermission, ToolAuditRecord, SystemSetting, DeepSearchRun, AgentRun, ExternalIntegration, KnowledgeDocument
-from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut, KnowledgeTextCreate, KnowledgeDocumentOut, KnowledgeSourceOut)
+from .schemas import (ChatRequest, ChatResponse, ConversationCreate, ConversationDetailOut, ConversationOut, ConversationUpdate, HistoryMessageOut, MemoryCreate, MemoryOut, MemoryProposalOut, MemoryUpdate, ToolExecuteRequest, DeepSearchToggleRequest, DeepSearchSourceOut, ToolPermissionUpdate, ToolPermissionOut, ToolConfirmationOut, AgentToggleRequest, AgentRunResumeRequest, IdentitySessionOut, IdentityOut, SessionLoginOut, SafetyStatusOut, SafetyAuthorizeRequest, SafetyAuthorizeOut, BreakGlassRegisterOut, ChatCancelRequest, ExternalIntegrationCreate, ExternalIntegrationToggle, ExternalIntegrationOut, KnowledgeTextCreate, KnowledgeUpdate, KnowledgeDocumentOut, KnowledgeSourceOut)
 from .llm import build_user_profile, is_profile_query
 from .cortex import ask_with_cortex, route_task, configured_providers, provider_model
 from scripts.seed_memories import seed_memories
@@ -28,7 +28,7 @@ from .integrations import INTEGRATION_ENGINE, IntegrationError
 from .knowledge_engine import KNOWLEDGE_ENGINE
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.10.0")
+app = FastAPI(title="Doom Personal AI", version="1.10.1")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:
@@ -327,6 +327,21 @@ async def knowledge_upload(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Falha ao processar documento: {exc}") from exc
+
+
+@app.patch("/api/knowledge/{document_id}", response_model=KnowledgeDocumentOut, dependencies=[Depends(auth)])
+def knowledge_update(document_id: int, payload: KnowledgeUpdate, db: Session = Depends(get_db)):
+    try:
+        row = KNOWLEDGE_ENGINE.update_document(
+            db, document_id, title=payload.title, content=payload.content,
+            collection=payload.collection, topic=payload.topic, version=payload.version,
+            source_uri=payload.source_uri,
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Documento de conhecimento não encontrado.")
+        return row
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.delete("/api/knowledge/{document_id}", dependencies=[Depends(auth)])

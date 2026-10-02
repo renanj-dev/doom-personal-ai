@@ -115,3 +115,25 @@ class KnowledgeEngineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_knowledge_edit_reindexes_and_updates_metadata():
+    from app.main import app
+    from fastapi.testclient import TestClient
+    with TestClient(app) as client:
+        h = {"X-Doom-Key": "test-key"}
+        created = client.post('/api/knowledge/text', headers={**h, 'Content-Type':'application/json'}, json={
+            'title':'Editor Test','content':'Arranjo simples usa ordem e sem repetição.','collection':'Estudos','topic':'Matemática','version':'1'
+        })
+        assert created.status_code == 200
+        doc = created.json()
+        edited = client.patch(f"/api/knowledge/{doc['id']}", headers={**h, 'Content-Type':'application/json'}, json={
+            'title':'Editor Test Atualizado','content':'Combinação simples não considera a ordem.','collection':'Estudos','topic':'Combinatória','version':'2','source_uri':'manual://teste'
+        })
+        assert edited.status_code == 200
+        assert edited.json()['title'] == 'Editor Test Atualizado'
+        assert edited.json()['version'] == '2'
+        hit = client.get('/api/knowledge/search', headers=h, params={'q':'Combinação ordem','limit':5})
+        assert hit.status_code == 200
+        assert any(x['document_id'] == doc['id'] for x in hit.json()['hits'])
+        client.delete(f"/api/knowledge/{doc['id']}", headers=h)

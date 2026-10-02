@@ -135,3 +135,11 @@ v1.5.0
 - Added authenticated `/api/context/preview` for diagnostics.
 - Kept profile/identity questions deterministic to avoid Doom/Renan identity confusion.
 - Updated the project documentation and UI version markers to v1.3.
+
+## v1.10.1 — Knowledge Management UI
+- Base de Conhecimento acessível por drawer.
+- Visualização e edição completa de documentos.
+- Endpoint PATCH para editar conhecimento.
+- Reindexação automática dos chunks após edição.
+- Busca e exclusão mantidas.
+- 39 testes passando.

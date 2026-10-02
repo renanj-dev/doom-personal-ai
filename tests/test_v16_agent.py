@@ -38,7 +38,7 @@ def test_agent_toggle_and_run():
         headers = {"X-Doom-Key": "test-key"}
         health = client.get("/health")
         assert health.status_code == 200
-        assert health.json()["version"] == "1.10.0"
+        assert health.json()["version"] == "1.10.1"
 
         status = client.get("/api/agent", headers=headers)
         assert status.json()["enabled"] is False

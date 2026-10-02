@@ -277,6 +277,15 @@ class KnowledgeTextCreate(BaseModel):
     source_uri: str = Field(default="", max_length=600)
 
 
+class KnowledgeUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=220)
+    content: str = Field(min_length=1, max_length=2_000_000)
+    collection: str = Field(default="Geral", min_length=1, max_length=100)
+    topic: str = Field(default="", max_length=120)
+    version: str = Field(default="1", min_length=1, max_length=64)
+    source_uri: str = Field(default="", max_length=600)
+
+
 class KnowledgeDocumentOut(BaseModel):
     id: int
     title: str
