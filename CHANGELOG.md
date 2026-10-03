@@ -162,11 +162,11 @@ v1.5.0
 - Interface version updated to v1.12.0.
 
 
-## v1.13.0
+## v1.13.1
 - Doom Multimodal: visão + voz em uma única versão.
 - Vision API para análise de imagens com OpenAI, OpenRouter ou Ollama conforme configuração.
 - Entrada de voz por reconhecimento nativo do navegador.
 - Saída de voz por Speech Synthesis do navegador.
 - Anexo, pré-visualização e remoção de imagens na interface.
-- Interface, telemetria e estado visual atualizados para v1.13.0.
+- Interface, telemetria e estado visual atualizados para v1.13.1.
 - Imagens não são persistidas pelo Doom após a análise.

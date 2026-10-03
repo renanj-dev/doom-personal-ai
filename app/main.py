@@ -29,7 +29,7 @@ from .knowledge_engine import KNOWLEDGE_ENGINE
 from .multimodal import analyze_image, status as get_multimodal_status, VisionError, validate_image
 
 settings = get_settings()
-app = FastAPI(title="Doom Personal AI", version="1.13.0")
+app = FastAPI(title="Doom Personal AI", version="1.13.1")
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
 if settings.cors_list:

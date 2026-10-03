@@ -1,4 +1,4 @@
-# Doom v1.13.0 — Multimodal (Voz + Visão)
+# Doom v1.13.1 — Multimodal (Voz + Visão)
 
 A v1.13 junta voz e visão em uma única etapa.
 
@@ -25,3 +25,12 @@ OLLAMA_VISION_MODEL=
 ```
 
 Os modelos visuais devem aceitar entrada de imagem.
+
+
+## Refinamento v1.13.1
+- Corrigida a inicialização do estado multimodal no navegador (`DOOM_MULTIMODAL`).
+- Corrigido o armazenamento temporário da imagem anexada (`DOOM_IMAGE_FILE`).
+- Botões de visão, microfone e saída de voz agora possuem estado explícito e tratamento de erro.
+- A visão só aparece como ativa quando existe um modelo visual configurado explicitamente.
+- Pré-visualização de imagem libera URLs temporárias para evitar vazamentos de memória.
+- Mensagens de erro de microfone ficaram mais claras (permissão, ausência de fala e falhas de inicialização).

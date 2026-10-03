@@ -163,15 +163,15 @@ def analyze_image(image_bytes: bytes, mime_type: str, prompt: str, context_text:
 
 def status() -> dict:
     providers = []
-    if settings.openai_api_key:
-        providers.append({"provider": "openai", "model": settings.openai_vision_model or settings.openai_model})
-    if settings.openrouter_api_key:
-        providers.append({"provider": "openrouter", "model": settings.openrouter_vision_model or settings.openrouter_model})
-    if settings.ollama_base_url:
-        providers.append({"provider": "ollama", "model": settings.ollama_vision_model or settings.ollama_model})
+    if settings.openai_api_key and settings.openai_vision_model:
+        providers.append({"provider": "openai", "model": settings.openai_vision_model})
+    if settings.openrouter_api_key and settings.openrouter_vision_model:
+        providers.append({"provider": "openrouter", "model": settings.openrouter_vision_model})
+    if settings.ollama_vision_model:
+        providers.append({"provider": "ollama", "model": settings.ollama_vision_model})
     return {
         "enabled": bool(settings.multimodal_enabled),
-        "vision": bool(settings.multimodal_enabled),
+        "vision": bool(settings.multimodal_enabled and providers),
         "voice_input": True,
         "voice_output": True,
         "max_image_mb": settings.vision_max_file_mb,
