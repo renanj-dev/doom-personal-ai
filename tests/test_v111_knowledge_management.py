@@ -12,10 +12,10 @@ def test_v111_health_and_ui_version():
     with TestClient(app) as client:
         r = client.get('/health')
         assert r.status_code == 200
-        assert r.json()['version'] == '1.13.1'
+        assert r.json()['version'] == '1.13.2'
         html = client.get('/').text
-        assert 'FOREST CORE · v1.13.1' in html
-        assert '/static/doom-state.js?v=1.13.1' in html
+        assert 'FOREST CORE · v1.13.2' in html
+        assert '/static/doom-state.js?v=1.13.2' in html
 
 
 def test_v111_catalog_and_filtered_list():

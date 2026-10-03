@@ -1,3 +1,6 @@
+## v1.13.2 — Realtime Vision
+A câmera pode permanecer ativa para pré-visualização local. A IA só recebe um frame quando o usuário solicita uma análise.
+
 # Doom Personal AI v1.9.0
 
 Doom is a personal AI assistant project with its own identity, personality, curated user profile, persistent memory, web UI and switchable model providers.

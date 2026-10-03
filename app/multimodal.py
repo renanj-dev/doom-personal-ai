@@ -174,6 +174,9 @@ def status() -> dict:
         "vision": bool(settings.multimodal_enabled and providers),
         "voice_input": True,
         "voice_output": True,
+        "camera_preview": True,
+        "camera_analysis": bool(settings.multimodal_enabled and providers),
+        "analysis_mode": "on_demand",
         "max_image_mb": settings.vision_max_file_mb,
         "providers": providers,
     }

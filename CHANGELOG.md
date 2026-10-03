@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.13.2
+- Realtime Vision: câmera contínua apenas para pré-visualização local.
+- Análise de frame somente sob comando explícito.
+- Comando de voz para análise sob demanda.
+- Controles de câmera e telemetria na interface Forest Core.
+- Status da API multimodal inclui modo `on_demand`.
+
+# Changelog
+
 ## 1.11.0
 - Knowledge Management avançado.
 - Filtros e catálogo da Base de Conhecimento.

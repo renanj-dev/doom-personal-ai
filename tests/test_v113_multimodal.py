@@ -15,10 +15,10 @@ from app.main import app
 def test_v113_version_and_ui():
     c = TestClient(app)
     h = c.get('/health')
-    assert h.json()['version'] == '1.13.1'
+    assert h.json()['version'] == '1.13.2'
     html = c.get('/').text
-    assert 'FOREST CORE · v1.13.1' in html
-    assert '/static/doom-state.js?v=1.13.1' in html
+    assert 'FOREST CORE · v1.13.2' in html
+    assert '/static/doom-state.js?v=1.13.2' in html
     assert 'id="imageBtn"' in html
     assert 'id="micBtn"' in html
 
@@ -81,3 +81,31 @@ def test_v1131_frontend_multimodal_state_and_wiring():
     assert "addEventListener('click',toggleListening)" in text
     assert "addEventListener('click',toggleVoiceOutput)" in text
     assert "addEventListener('click',selectImage)" in text
+
+
+def test_v1132_multimodal_status_exposes_on_demand_camera(monkeypatch):
+    from app.multimodal import status
+    st = get_settings()
+    monkeypatch.setattr(st, 'multimodal_enabled', True)
+    monkeypatch.setattr(st, 'ollama_vision_model', 'vision-test')
+    data = status()
+    assert data['camera_preview'] is True
+    assert data['analysis_mode'] == 'on_demand'
+    assert data['camera_analysis'] is True
+
+
+def test_v1132_frontend_realtime_camera_controls():
+    root = Path(__file__).resolve().parents[1]
+    html = (root / 'app' / 'static' / 'index.html').read_text(encoding='utf-8')
+    js = (root / 'app' / 'static' / 'doom-state.js').read_text(encoding='utf-8')
+    multimodal = (root / 'app' / 'multimodal.py').read_text(encoding='utf-8')
+    assert 'id="cameraBtn"' in html
+    assert 'id="cameraPreview"' in html
+    assert 'id="cameraToggle"' in html
+    assert 'id="analyzeFrame"' in html
+    assert 'getUserMedia({video' in js
+    assert 'getTracks().forEach(t=>t.stop())' in js
+    assert 'captureCameraFrame' in js
+    assert 'analyzeCurrentFrame' in js
+    assert 'analysis_mode' in multimodal
+    assert 'on_demand' in multimodal
